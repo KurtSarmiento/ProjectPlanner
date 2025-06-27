@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Projects</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>My Projects</h1>
+        <nav>
+            <ul>
+                <li><a href="/">Home</a></li>
+                <li><a href="/projects">Projects</a></li> {# Link to this page #}
+                {% if current_user.is_authenticated %}
+                    <li><a href="/logout">Logout ({{ current_user.username }})</a></li>
+                {% else %}
+                    <li><a href="/register">Register</a></li>
+                    <li><a href="/login">Login</a></li>
+                {% endif %}
+            </ul>
+        </nav>
+    </header>
+
+    <main>
+        <h2>Create New Project</h2>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+              <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('main.projects') }}">
+            <label for="project_name">Project Name:</label><br>
+            <input type="text" id="project_name" name="project_name" required><br><br>
+
+            <label for="project_description">Description (Optional):</label><br>
+            <textarea id="project_description" name="project_description" rows="4" cols="50"></textarea><br><br>
+
+            <input type="submit" value="Create Project">
+        </form>
+
+        <hr>
+
+        <h2>Your Projects:</h2>
+        {% if projects %}
+        <ul>
+            {% for project in projects %}
+            <li>
+                <strong><a href="{{ url_for('main.view_project', project_id=project.id) }}">{{ project.name }}</a></strong>
+                {% if project.description %}<p>{{ project.description }}</p>{% endif %}
+                {# Add edit/delete project links here later if desired #}
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p>No projects yet. Create one above!</p>
+        {% endif %}
+
+    </main>
+
+    <footer>
+        <p>&copy; 2025 Project Planner</p>
+    </footer>
+</body>
+</html>

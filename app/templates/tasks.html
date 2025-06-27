@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Project Planner - {{ project.name }} Tasks</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='frappe-gantt.css') }}">
+    </head>
+    <body>
+        <header>
+            <h1>{{ project.name }} Tasks</h1>
+            <nav>
+                <ul>
+                    <li><a href="/">Home</a></li>
+                    <li><a href="/projects">Projects</a></li> {# Link back to projects list #}
+                    {% if current_user.is_authenticated %}
+                        <li><a href="/logout">Logout ({{ current_user.username }})</a></li>
+                    {% else %}
+                        <li><a href="/register">Register</a></li>
+                        <li><a href="/login">Login</a></li>
+                    {% endif %}
+                </ul>
+            </nav>
+        </header>
+
+        <main>
+            <h2>{{ project.name }} Tasks</h2>
+
+            {# Flashed messages container (for initial page load, and populated by JS for AJAX) #}
+            {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <ul class="flashes">
+                {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
+                </ul>
+            {% endif %}
+            {% endwith %}
+
+            <p><a href="{{ url_for('main.add_task_to_project', project_id=project.id) }}" class="button">Add New Task</a></p>
+
+            <h3>Existing Tasks for {{ project.name }}:</h3>
+            <ul id="task-list"> {# Added ID for JavaScript #}
+                {# Tasks are initially rendered by Jinja, but will be re-rendered by JS after AJAX #}
+                {% if tasks %}
+                {% for task in tasks %}
+                    <li>
+                        <strong>{{ task.name }}</strong>
+                        (Starts: {{ task.start_date.strftime('%Y-%m-%d') if task.start_date else 'N/A' }},
+                        Ends: {{ task.end_date.strftime('%Y-%m-%d') if task.end_date else 'N/A' }},
+                        Progress: {{ task.progress }}%,
+                        Status: {{ task.status }})
+                        <a href="{{ url_for('main.edit_task', task_id=task.id) }}">Edit</a>
+                        <form class="delete-task-form" data-task-id="{{ task.id }}" action="{{ url_for('main.delete_task', task_id=task.id) }}" method="POST" style="display:inline;"> {# Added class and data-task-id #}
+                            <button type="submit" onclick="return confirm('Are you sure you want to delete this task?');">Delete</button>
+                        </form>
+                    </li>
+                {% endfor %}
+                {% else %}
+                <p>No tasks yet for this project. Add one above!</p>
+                {% endif %}
+            </ul>
+
+            <hr>
+            <h3>{{ project.name }} Timeline (Gantt Chart)</h3>
+            <div id="gantt-chart-container" class="gantt-container"> {# Added ID for JavaScript #}
+                <svg id="gantt"></svg>
+            </div>
+
+        </main>
+
+        <footer>
+            <p>&copy; 2025 Project Planner</p>
+        </footer>
+        {# FIRST: Load the Frappe Gantt library #}
+        <script src="{{ url_for('static', filename='gantt.js') }}"></script>
+
+        {# SECOND: Load your custom script that uses Frappe Gantt #}
+        <script>
+            // Data passed from Flask for initial Gantt chart rendering
+            // *** CRITICAL FIX: Explicitly parse JSON string from Jinja output using backticks ***
+            const APP_GANTT_DATA_STRING = {{ gantt_tasks_json | tojson | safe }};
+            const APP_GANTT_DATA = JSON.parse(APP_GANTT_DATA_STRING);
+            console.log("Initial APP_GANTT_DATA received (after parse):", APP_GANTT_DATA); // This should now log an Array
+
+            const PROJECT_ID = {{ project.id }};
+            let currentGanttChart;
+
+            // --- ALL HELPER FUNCTIONS (renderTaskList, displayFlashMessages, fetchAndUpdateUI, handleDeleteSubmit, attachDeleteEventListeners, renderGanttChart) ---
+
+            // Function to render/re-render the task list
+            function renderTaskList(tasks) {
+                const taskListUl = document.getElementById('task-list');
+                if (!taskListUl) return;
+
+                let html = '';
+                if (tasks.length === 0) {
+                    html = '<p>No tasks yet for this project. Add one above!</p>';
+                } else {
+                    tasks.forEach(task => {
+                        html += `
+                            <li>
+                                <strong>${task.name}</strong>
+                                (Starts: ${task.start_date || 'N/A'},
+                                Ends: ${task.end_date || 'N/A'},
+                                Progress: ${task.progress}%,
+                                Status: ${task.status})
+                                <a href="/edit_task/${task.id}">Edit</a>
+                                <form class="delete-task-form" data-task-id="${task.id}" action="/delete_task/${task.id}" method="POST" style="display:inline;">
+                                    <button type="submit" onclick="return confirm('Are you sure you want to delete this task?');">Delete</button>
+                                </form>
+                            </li>
+                        `;
+                    });
+                }
+                taskListUl.innerHTML = html;
+                attachDeleteEventListeners(); // Re-attach listeners after re-rendering
+            }
+
+            // Function to display flash messages
+            function displayFlashMessages(messages) {
+                const flashContainer = document.querySelector('.flashes');
+                if (!flashContainer) return;
+
+                flashContainer.innerHTML = ''; // Clear existing messages
+                messages.forEach(msg => {
+                    const li = document.createElement('li');
+                    li.className = msg.category;
+                    li.textContent = msg.message;
+                    flashContainer.appendChild(li);
+                });
+            }
+
+            // Function to fetch and update UI
+            async function fetchAndUpdateUI() {
+                try {
+                    const response = await fetch(`/projects/${PROJECT_ID}/tasks_api`);
+                    const data = await response.json();
+
+                    if (data.success) {
+                        renderTaskList(data.tasks);
+                        renderGanttChart(data.gantt_tasks); // Update Gantt chart as well
+                        displayFlashMessages(data.messages || []); // Display flashed messages from AJAX
+                    } else {
+                        console.error('Failed to fetch tasks:', data.message);
+                        displayFlashMessages([{ category: 'error', message: data.message || 'Failed to update tasks.' }]);
+                    }
+                } catch (error) {
+                    console.error('Error fetching tasks:', error);
+                    displayFlashMessages([{ category: 'error', message: 'Network error or server issue.' }]);
+                }
+            }
+
+            // Function to handle delete form submission
+            async function handleDeleteSubmit(event) {
+                event.preventDefault(); // Prevent default form submission
+
+                const form = event.target;
+                const taskId = form.dataset.taskId;
+                const confirmDelete = confirm('Are you sure you want to delete this task?');
+
+                if (confirmDelete) {
+                    try {
+                        const response = await fetch(form.action, {
+                            method: form.method
+                        });
+                        const data = await response.json();
+
+                        if (data.success) {
+                            fetchAndUpdateUI(); // Re-fetch and render tasks after deletion
+                        } else {
+                            displayFlashMessages([{ category: 'error', message: data.message || 'Failed to delete task.' }]);
+                        }
+                    } catch (error) {
+                        console.error('Error deleting task:', error);
+                        displayFlashMessages([{ category: 'error', message: 'Network error or server issue during deletion.' }]);
+                    }
+                }
+            }
+
+            // Function to attach event listeners to delete forms
+            function attachDeleteEventListeners() {
+                document.querySelectorAll('.delete-task-form').forEach(form => {
+                    // Remove existing listeners to prevent duplicates (important for re-rendering)
+                    form.removeEventListener('submit', handleDeleteSubmit);
+                    // Add new listener
+                    form.addEventListener('submit', handleDeleteSubmit);
+                });
+            }
+
+            // --- Function to render/re-render the Gantt chart ---
+            function renderGanttChart(ganttData) {
+                const ganttSvg = document.getElementById('gantt');
+                if (!ganttSvg) {
+                    console.error("Gantt SVG element not found.");
+                    return;
+                }
+
+                ganttSvg.innerHTML = ''; // Clear existing SVG content
+
+                console.log("Type of ganttData BEFORE Gantt constructor:", typeof ganttData, ganttData);
+
+                if (!Array.isArray(ganttData) || ganttData.length === 0) {
+                    ganttSvg.innerHTML = '<text x="10" y="20" fill="gray">No tasks with dates to display in Gantt chart.</text>';
+                    return;
+                }
+
+                if (typeof Gantt !== 'undefined') {
+                    console.log("Gantt object IS defined. Initializing chart...");
+                    try {
+                        currentGanttChart = new Gantt(ganttSvg, ganttData, {
+                            header_height: 50,
+                            column_width: 30,
+                            step: 24,
+                            view_modes: ['Quarter Day', 'Half Day', 'Day', 'Week', 'Month'],
+                            bar_height: 20,
+                            bar_corner_radius: 3,
+                            arrow_curve: 5,
+                            padding: 18,
+                            date_format: 'YYYY-MM-DD',
+                            language: 'en',
+                            custom_popup_html: function(task) {
+                                return `
+                                    <div class="details-container">
+                                        <h5>${task.name}</h5>
+                                        <p>Progress: ${task.progress}%</p>
+                                        <p>Status: ${task.status}</p>
+                                        <p>Duration: ${Math.ceil((new Date(task.end) - new Date(task.start)) / (1000 * 60 * 60 * 24))} days</p>
+                                        ${task.dependencies ? `<p>Depends on: ${task.dependencies}</p>` : ''}
+                                    </div>
+                                `;
+                            }
+                        });
+                        currentGanttChart.change_view_mode('Month');
+                        console.log("Gantt chart initialized successfully.");
+                    } catch (e) {
+                        console.error("Error during Gantt initialization:", e);
+                        ganttSvg.innerHTML = `<text x="10" y="20" fill="red">Error initializing Gantt chart: ${e.message}</text>`;
+                    }
+                } else {
+                    console.error("Gantt object is NOT defined. Cannot initialize chart.");
+                    ganttSvg.innerHTML = '<text x="10" y="20" fill="red">Could not load Gantt chart (library not found).</text>';
+                }
+            }
+
+            // --- END OF HELPER FUNCTIONS ---
+
+            // Initial render of Gantt chart and attach event listeners when page loads
+            document.addEventListener('DOMContentLoaded', () => {
+                renderGanttChart(APP_GANTT_DATA);
+                attachDeleteEventListeners();
+            });
+        </script>
+        {# Your static gantt.js might have additional Frappe Gantt setup, ensure it's still included if needed #}
+        {# If gantt.js only initializes the chart, its content might now be redundant with renderGanttChart in this file #}
+    </body>
+</html>

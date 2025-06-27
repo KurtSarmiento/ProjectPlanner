@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    </head>
+<body>
+    <header>
+        </header>
+
+    <main>
+        <h2>Edit Task for Project: {{ current_project.name }}</h2>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+          {% if messages %}
+            <ul class="flashes">
+            {% for category, message in messages %}
+              <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+            </ul>
+          {% endif %}
+        {% endwith %}
+
+        <form method="POST" action="{{ url_for('main.edit_task', task_id=task.id) }}">
+            <label for="task_name">Task Name:</label><br>
+            <input type="text" id="task_name" name="task_name" value="{{ task.name }}" required><br><br>
+
+            <label for="start_date">Start Date:</label><br>
+            <input type="date" id="start_date" name="start_date" value="{{ task.start_date.strftime('%Y-%m-%d') if task.start_date else '' }}"><br><br>
+
+            <label for="end_date">End Date:</label><br>
+            <input type="date" id="end_date" name="end_date" value="{{ task.end_date.strftime('%Y-%m-%d') if task.end_date else '' }}"><br><br>
+
+            <label for="progress">Progress (%):</label><br>
+            <input type="number" id="progress" name="progress" min="0" max="100" value="{{ task.progress }}" required><br><br>
+
+            <label for="status">Status:</label><br>
+            <select id="status" name="status" required>
+                <option value="To Do" {% if task.status == 'To Do' %}selected{% endif %}>To Do</option>
+                <option value="In Progress" {% if task.status == 'In Progress' %}selected{% endif %}>In Progress</option>
+                <option value="Completed" {% if task.status == 'Completed' %}selected{% endif %}>Completed</option>
+                <option value="Blocked" {% if task.status == 'Blocked' %}selected{% endif %}>Blocked</option>
+            </select><br><br>
+
+            <label for="dependencies">Dependencies (tasks from your projects):</label><br>
+            <select id="dependencies" name="dependencies" multiple>
+                {% set current_dependencies = task.dependencies.split(',') if task.dependencies else [] %}
+                {% for task_option in all_tasks %}
+                    {% if task_option.id != task.id %}
+                        <option value="{{ task_option.id }}" {% if task_option.id|string in current_dependencies %}selected{% endif %}>
+                            {{ task_option.name }} ({{ task_option.project.name }})
+                        </option>
+                    {% endif %}
+                {% endfor %}
+            </select><br><br>
+
+            <button type="submit">Update Task</button>
+        </form>
+
+        <script>
+            const form = document.querySelector('form');
+            const project_id = "{{ task.project.id }}";
+
+            form.addEventListener('submit', async function(event) {
+                event.preventDefault(); // Prevent default full page reload
+
+                const formData = new FormData(form);
+                const actionUrl = form.action;
+
+                try {
+                    const response = await fetch(actionUrl, {
+                        method: 'POST',
+                        body: formData,
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest', // Indicate AJAX request
+                        }
+                    });
+                    const data = await response.json();
+
+                    const flashContainer = document.querySelector('.flashes');
+                    if (flashContainer) flashContainer.innerHTML = ''; // Clear previous messages
+
+                    if (response.ok && data.success) {
+                        window.location.href = `/projects/${project_id}`; // Redirect to project view on success
+                    } else {
+                        if (data.errors) {
+                            data.errors.forEach(error => {
+                                const li = document.createElement('li');
+                                li.className = 'error';
+                                li.textContent = error;
+                                if (flashContainer) flashContainer.appendChild(li);
+                            });
+                        } else if (data.message) {
+                            const li = document.createElement('li');
+                            li.className = 'error';
+                            li.textContent = data.message;
+                            if (flashContainer) flashContainer.appendChild(li);
+                        }
+                        if (flashContainer) flashContainer.style.display = 'block';
+                    }
+                } catch (error) {
+                    console.error('Error submitting form:', error);
+                    const flashContainer = document.querySelector('.flashes');
+                    if (flashContainer) {
+                        flashContainer.innerHTML = `<li class="error">An unexpected error occurred.</li>`;
+                        flashContainer.style.display = 'block';
+                    }
+                }
+            });
+        </script>
+
+        <p><a href="{{ url_for('main.view_project', project_id=current_project.id) }}">Back to {{ current_project.name }} Tasks</a></p>
+    </main>
+
+    <footer>
+        </footer>
+</body>
+</html>
