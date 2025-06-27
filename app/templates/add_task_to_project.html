@@ -9,23 +9,23 @@
     <main>
         <h2>Add New Task to Project: {{ project.name }}</h2>
 
-        <ul class="flashes">
+        <!-- <ul class="flashes">
             {% with messages = get_flashed_messages(with_categories=true) %}
               {% for category, message in messages %}
                 <li class="{{ category }}">{{ message }}</li>
               {% endfor %}
             {% endwith %}
-        </ul>
+        </ul> -->
 
         <form method="POST" action="{{ url_for('main.add_task_to_project', project_id=project.id) }}">
             <label for="task_name">Task Name:</label><br>
             <input type="text" id="task_name" name="task_name" required><br><br>
 
             <label for="start_date">Start Date:</label><br>
-            <input type="date" id="start_date" name="start_date"><br><br>
+            <input type="date" id="start_date" name="start_date" autocomplete="off"><br><br>
 
             <label for="end_date">End Date:</label><br>
-            <input type="date" id="end_date" name="end_date"><br><br>
+            <input type="date" id="end_date" name="end_date" autocomplete="off"><br><br>
 
             <label for="progress">Progress (%):</label><br>
             <input type="number" id="progress" name="progress" min="0" max="100" value="0" required><br><br>
@@ -49,11 +49,112 @@
         </form>
 
         <script>
+            // --- GLOBAL DEBUG LOG: Check if script starts execution ---
+            console.log("Script block started for current page.");
+
             const form = document.querySelector('form');
+            // Use project.id for add_task_to_project.html, current_project.id for edit_task.html
+            // Example for edit_task.html:
             const project_id = {{ project.id }};
 
+            // Error Modal Elements
+            const errorModal = document.getElementById('errorModal');
+            const modalFlashContainer = document.querySelector('.modal-flashes');
+            const errorCloseButton = document.querySelector('#errorModal .close-button');
+
+            // Success Modal Elements
+            const successModal = document.getElementById('successModal');
+            const successMessageElem = document.getElementById('successMessage');
+            const successCloseButton = document.getElementById('successCloseButton');
+            const okButton = document.getElementById('okButton');
+
+            // --- Functions to manage modals ---
+            function closeErrorModal() {
+                console.log("closeErrorModal called.");
+
+                if (errorModal) errorModal.style.display = 'none';
+                if (modalFlashContainer) modalFlashContainer.innerHTML = ''; // Clear messages *inside* error modal
+
+                // Date clearing logic remains ONLY here (when error modal is dismissed)
+                const startDateInput = document.getElementById('start_date');
+                const endDateInput = document.getElementById('end_date');
+
+                if (startDateInput) {
+                    const originalType = startDateInput.type;
+                    startDateInput.type = 'text'; // Temporarily change type
+                    startDateInput.value = 'invalid-date'; // Set to an invalid string
+                    startDateInput.value = '';           // Immediately clear it
+                    startDateInput.type = originalType; // Restore original type
+                    console.log("Start date cleared after error.");
+                }
+                if (endDateInput) {
+                    const originalType = endDateInput.type;
+                    endDateInput.type = 'text'; // Temporarily change type
+                    endDateInput.value = 'invalid-date'; // Set to an invalid string
+                    endDateInput.value = '';           // Immediately clear it
+                    endDateInput.type = originalType; // Restore original type
+                    console.log("End date cleared after error.");
+                }
+            }
+
+            function showSuccessModal(message) {
+                console.log("showSuccessModal called with message:", message);
+                if (successMessageElem) successMessageElem.textContent = message;
+                if (successModal) successModal.style.display = 'block';
+            }
+
+            function closeSuccessModalAndClearForm() { // This function should clear all relevant fields
+                console.log("closeSuccessModalAndClearForm called.");
+                if (successModal) successModal.style.display = 'none';
+                if (successMessageElem) successMessageElem.textContent = ''; // Clear message inside success modal
+
+                // Clear all relevant form fields here (when success modal is dismissed)
+                form.reset(); // Resets all form fields to their initial state
+
+                // Optional: If form.reset() doesn't clear specific fields to your liking, add explicit clearing here:
+                document.getElementById('task_name').value = '';
+                document.getElementById('start_date').value = '';
+                document.getElementById('end_date').value = '';
+                document.getElementById('progress').value = '0';
+                // Add more lines for other fields as needed (e.g., dependencies, status)
+            }
+
+            // --- Event Listeners for Modals ---
+            // These ensure the correct function is called when the user dismisses a modal
+            if (errorCloseButton) {
+                errorCloseButton.addEventListener('click', closeErrorModal);
+                console.log("Error close button listener attached.");
+            }
+            if (successCloseButton) {
+                successCloseButton.addEventListener('click', closeSuccessModalAndClearForm);
+                console.log("Success close button listener attached.");
+            }
+            if (okButton) {
+                okButton.addEventListener('click', closeSuccessModalAndClearForm);
+                console.log("OK button listener attached for success modal.");
+            }
+
+            // Close modals if user clicks outside of them
+            window.addEventListener('click', function(event) {
+                if (event.target == errorModal) {
+                    closeErrorModal();
+                }
+                if (event.target == successModal) {
+                    closeSuccessModalAndClearForm();
+                }
+            });
+
+            // --- Form Submission Logic ---
             form.addEventListener('submit', async function(event) {
-                event.preventDefault(); // Prevent default full page reload
+                event.preventDefault();
+                console.log("Form submission initiated.");
+
+                // --- MODIFIED: ONLY hide existing modals and clear their *messages* ---
+                if (errorModal) errorModal.style.display = 'none';
+                if (successModal) successModal.style.display = 'none';
+                if (modalFlashContainer) modalFlashContainer.innerHTML = ''; // Clear old error messages
+                if (successMessageElem) successMessageElem.textContent = ''; // Clear old success message
+                // Fields are NOT cleared here. They are cleared only on modal dismissal.
 
                 const formData = new FormData(form);
                 const actionUrl = form.action;
@@ -63,44 +164,73 @@
                         method: 'POST',
                         body: formData,
                         headers: {
-                            'X-Requested-With': 'XMLHttpRequest', // Indicate AJAX request
+                            'X-Requested-With': 'XMLHttpRequest',
                         }
                     });
                     const data = await response.json();
-
-                    const flashContainer = document.querySelector('.flashes');
-                    if (flashContainer) flashContainer.innerHTML = ''; // Clear previous messages
+                    console.log("Server response received:", data);
 
                     if (response.ok && data.success) {
-                        window.location.href = `/projects/${project_id}`; // Redirect to project view on success
+                        // On SUCCESS: Show the success modal
+                        showSuccessModal(data.message || 'Task saved successfully!');
+                        // Fields will be cleared ONLY when user dismisses success modal
                     } else {
-                        if (data.errors) {
+                        // On ERROR: Display errors in the error modal
+                        if (data.errors && modalFlashContainer) {
                             data.errors.forEach(error => {
                                 const li = document.createElement('li');
                                 li.className = 'error';
                                 li.textContent = error;
-                                if (flashContainer) flashContainer.appendChild(li);
+                                modalFlashContainer.appendChild(li);
                             });
-                        } else if (data.message) {
+                            errorModal.style.display = 'block';
+                            console.log("Error modal displayed with specific errors.");
+                        } else if (data.message && modalFlashContainer) {
                             const li = document.createElement('li');
                             li.className = 'error';
                             li.textContent = data.message;
-                            if (flashContainer) flashContainer.appendChild(li);
+                            modalFlashContainer.appendChild(li);
+                            errorModal.style.display = 'block';
+                            console.log("Error modal displayed with generic message.");
+                        } else {
+                            console.error('Server returned an error but no specific message or modal container not found.');
+                            alert('An unexpected error occurred during validation.');
                         }
-                        if (flashContainer) flashContainer.style.display = 'block';
+                        // Fields will be cleared ONLY when user dismisses error modal
                     }
                 } catch (error) {
-                    console.error('Error submitting form:', error);
-                    const flashContainer = document.querySelector('.flashes');
-                    if (flashContainer) {
-                        flashContainer.innerHTML = `<li class="error">An unexpected error occurred.</li>`;
-                        flashContainer.style.display = 'block';
+                    console.error('Error submitting form (network/parsing):', error);
+                    if (modalFlashContainer) {
+                        modalFlashContainer.innerHTML = `<li class="error">An unexpected network or server error occurred. Please check your connection.</li>`;
+                        errorModal.style.display = 'block';
+                    } else {
+                        alert('An unexpected network error occurred. Please check console for details.');
                     }
                 }
             });
         </script>
 
         <p><a href="{{ url_for('main.view_project', project_id=project.id) }}">Back to {{ project.name }} Tasks</a></p>
+    </div>
+
+    <div id="errorModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="errorCloseButton">&times;</span>
+            <h3>Error!</h3>
+            <ul class="modal-flashes flashes">
+                {# Error messages will be inserted here by JavaScript #}
+            </ul>
+        </div>
+    </div>
+
+    <div id="successModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button" id="successCloseButton">&times;</span>
+            <h3>Success!</h3>
+            <p id="successMessage"></p>
+            <button id="okButton" class="button">OK</button>
+        </div>
+    </div>
     </main>
 
     <footer>

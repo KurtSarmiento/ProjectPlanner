@@ -43,3 +43,59 @@
 .gantt .bar-blue .bar-wrapper.active .bar-progress {
     fill: #286090; /* Darker blue on hover */
 }
+
+/* --- Modal Styles --- */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1000; /* Sit on top (higher than other content) */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    padding-top: 60px; /* Location of the box */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto; /* 5% from the top and centered */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%; /* Could be more or less, depending on screen size */
+    max-width: 500px; /* Max width for larger screens */
+    border-radius: 8px;
+    position: relative; /* For positioning the close button */
+}
+
+.close-button {
+    color: #aaa;
+    float: right; /* Position to the top right */
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close-button:hover,
+.close-button:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Ensure modal-flashes has the same styling as original flashes if needed */
+.modal-flashes {
+    list-style-type: none;
+    padding: 0; /* Remove default padding from ul */
+    margin-top: 15px;
+}
+/* You can copy the .flashes li.error style here if you want it identical */
+.modal-flashes li.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+    padding: 10px;
+    margin-bottom: 5px; /* Spacing between errors */
+    border-radius: 5px;
+}
