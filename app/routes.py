@@ -317,11 +317,18 @@ def delete_task(task_id):
             return redirect(url_for('main.view_project', project_id=project_id))
         
 # Inside routes.py, define after other routes
-@bp.route('/api/projects/<int:project_id>/tasks', methods=['GET']) # <--- Note: your JS calls /projects/ID/tasks_api
+@bp.route('/api/projects/<int:project_id>/tasks', methods=['GET'])
 @login_required
 def api_get_project_tasks(project_id):
+    print("--- DEBUG: api_get_project_tasks function was called! ---")
+    
     project = Project.query.filter_by(id=project_id, user=current_user).first_or_404()
-    project_tasks = Task.query.filter_by(project=project).order_by(Task.name).all()
+    # CHANGE THIS LINE: Sort by start_date in ascending order
+    project_tasks = Task.query.filter_by(project=project).order_by(Task.start_date.asc()).all()
+
+    print(f"Tasks fetched for project {project_id}, ordered by start_date:")
+    for task in project_tasks:
+        print(f"  Task ID: {task.id}, Name: {task.name}, Start Date: {task.start_date}")
 
     tasks_data = []
     gantt_tasks_data = []
@@ -362,10 +369,10 @@ def api_get_project_tasks(project_id):
         gantt_tasks_data.append(gantt_task_item)
 
     return jsonify({
-        'success': True, # <--- Add this
+        'success': True,
         'tasks': tasks_data,
-        'gantt_tasks': gantt_tasks_data, # <--- Make sure this key matches your JS
-        'messages': [] # <--- Add this, or populate with relevant messages if needed
+        'gantt_tasks': gantt_tasks_data,
+        'messages': []
     })
 
 # In routes.py

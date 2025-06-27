@@ -64,6 +64,16 @@
 
             <hr>
             <h3>{{ project.name }} Timeline (Gantt Chart)</h3>
+            <div class="gantt-controls">
+                <label for="gantt-view-mode">View Mode:</label>
+                <select id="gantt-view-mode">
+                    <option value="Day">Day</option>
+                    <option value="Week" selected>Week</option> {# Default to Week #}
+                    <option value="Month">Month</option>
+                    <option value="Quarter">Quarter</option>
+                    <option value="Hour">Hour</option> {# Optional: Very granular view #}
+                </select>
+            </div>
             <div id="gantt-chart-container" class="gantt-container"> {# Added ID for JavaScript #}
                 <svg id="gantt"></svg>
             </div>
@@ -133,10 +143,9 @@
             }
 
             // Function to fetch and update UI
-            // Function to fetch and update UI
             async function fetchAndUpdateUI() {
                 try {
-                    const response = await fetch(`/api/projects/${PROJECT_ID}/tasks`); // Corrected API endpoint
+                    const response = await fetch(`/api/projects/${PROJECT_ID}/tasks`);
                     const data = await response.json();
 
                     if (data.success) { // Expecting data.success from the API
@@ -210,66 +219,68 @@
             }
 
             // --- Function to render/re-render the Gantt chart ---
-            function renderGanttChart(ganttData) {
-                const ganttSvg = document.getElementById('gantt');
-                if (!ganttSvg) {
-                    console.error("Gantt SVG element not found.");
-                    return;
-                }
-
-                ganttSvg.innerHTML = ''; // Clear existing SVG content
-
-                console.log("Type of ganttData BEFORE Gantt constructor:", typeof ganttData, ganttData);
-
-                if (!Array.isArray(ganttData) || ganttData.length === 0) {
-                    ganttSvg.innerHTML = '<text x="10" y="20" fill="gray">No tasks with dates to display in Gantt chart.</text>';
-                    return;
-                }
-
+            // Inside your renderGanttChart function:
+            function renderGanttChart(tasks) {
                 if (typeof Gantt !== 'undefined') {
-                    console.log("Gantt object IS defined. Initializing chart...");
-                    try {
-                        currentGanttChart = new Gantt(ganttSvg, ganttData, {
-                            header_height: 50,
-                            column_width: 30,
-                            step: 24,
-                            view_modes: ['Quarter Day', 'Half Day', 'Day', 'Week', 'Month'],
-                            bar_height: 20,
-                            bar_corner_radius: 3,
-                            arrow_curve: 5,
-                            padding: 18,
-                            date_format: 'YYYY-MM-DD',
-                            language: 'en',
-                            custom_popup_html: function(task) {
-                                return `
-                                    <div class="details-container">
-                                        <h5>${task.name}</h5>
-                                        <p>Progress: ${task.progress}%</p>
-                                        <p>Status: ${task.status}</p>
-                                        <p>Duration: ${Math.ceil((new Date(task.end) - new Date(task.start)) / (1000 * 60 * 60 * 24))} days</p>
-                                        ${task.dependencies ? `<p>Depends on: ${task.dependencies}</p>` : ''}
-                                    </div>
-                                `;
-                            }
-                        });
-                        currentGanttChart.change_view_mode('Month');
-                        console.log("Gantt chart initialized successfully.");
-                    } catch (e) {
-                        console.error("Error during Gantt initialization:", e);
-                        ganttSvg.innerHTML = `<text x="10" y="20" fill="red">Error initializing Gantt chart: ${e.message}</text>`;
+                    const ganttSvg = document.getElementById('gantt');
+                    if (!ganttSvg) {
+                        console.error("Gantt chart SVG element not found!");
+                        return;
                     }
+                    ganttSvg.innerHTML = ''; // Clear any existing chart
+
+                    window.currentGanttChart = new Gantt(ganttSvg, tasks, {
+                        custom_popup_html: function(task) {
+                            // Your custom popup HTML logic goes here
+                            return `
+                                <div class="details-container">
+                                    <h5>${task.name}</h5>
+                                    <p>Start: ${task.start}</p>
+                                    <p>End: ${task.end}</p>
+                                    <p>Progress: ${task.progress}%</p>
+                                    <p>Status: ${task.status}</p>
+                                    ${task.dependencies ? `<p>Depends on: ${task.dependencies}</p>` : ''}
+                                </div>
+                            `;
+                        }
+                    });
+
+                    // Get the initial view mode from the dropdown
+                    const viewModeSelect = document.getElementById('gantt-view-mode');
+                    // Default to 'Month' if the select element somehow isn't found
+                    const initialViewMode = viewModeSelect ? viewModeSelect.value : 'Month';
+
+                    // Set the initial view mode for the newly created Gantt chart
+                    window.currentGanttChart.change_view_mode(initialViewMode);
+                    console.log(`Gantt chart initialized/re-rendered in ${initialViewMode} view.`);
+
                 } else {
                     console.error("Gantt object is NOT defined. Cannot initialize chart.");
-                    ganttSvg.innerHTML = '<text x="10" y="20" fill="red">Could not load Gantt chart (library not found).</text>';
+                    const ganttSvg = document.getElementById('gantt');
+                    if (ganttSvg) {
+                        ganttSvg.innerHTML = '<text x="10" y="20" fill="red">Could not load Gantt chart (library not found).</text>';
+                    }
                 }
             }
-
             // --- END OF HELPER FUNCTIONS ---
 
             // Initial render of Gantt chart and attach event listeners when page loads
             document.addEventListener('DOMContentLoaded', () => {
-                renderGanttChart(APP_GANTT_DATA);
+                fetchAndUpdateUI();
                 attachDeleteEventListeners();
+
+                const viewModeSelect = document.getElementById('gantt-view-mode');
+                if (viewModeSelect) {
+                    viewModeSelect.addEventListener('change', (event) => {
+                        const selectedMode = event.target.value;
+                        if (window.currentGanttChart) {
+                            window.currentGanttChart.change_view_mode(selectedMode);
+                            console.log(`Gantt view mode changed to: ${selectedMode}`);
+                        } else {
+                            console.warn("Gantt chart not initialized yet. Cannot change view mode.");
+                        }
+                    });
+                }
             });
         </script>
         {# Your static gantt.js might have additional Frappe Gantt setup, ensure it's still included if needed #}
