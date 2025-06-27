@@ -99,3 +99,10 @@
     margin-bottom: 5px; /* Spacing between errors */
     border-radius: 5px;
 }
+
+/* Disable interaction with Gantt chart bars and handles */
+.gantt .bar-wrapper,
+.gantt .handle {
+    pointer-events: none !important; /* Prevents all mouse events */
+    cursor: default !important; /* Changes cursor to default, overriding resize/pointer */
+}

@@ -220,9 +220,10 @@
 
             // --- Function to render/re-render the Gantt chart ---
             // Inside your renderGanttChart function:
+            // Inside your renderGanttChart function:
             function renderGanttChart(tasks) {
                 if (typeof Gantt !== 'undefined') {
-                    const ganttSvg = document.getElementById('gantt');
+                    const ganttSvg = document.getElementById('gantt'); // Corrected ID: 'gantt'
                     if (!ganttSvg) {
                         console.error("Gantt chart SVG element not found!");
                         return;
@@ -242,21 +243,21 @@
                                     ${task.dependencies ? `<p>Depends on: ${task.dependencies}</p>` : ''}
                                 </div>
                             `;
-                        }
+                        },
+                        // --- ADD THESE TWO LINES TO DISABLE DRAGGING ---
+                        on_date_change: null,      // Disables dragging bars to change start/end dates
+                        on_progress_change: null   // Disables dragging the progress handle
+                        // ----------------------------------------------
                     });
 
-                    // Get the initial view mode from the dropdown
                     const viewModeSelect = document.getElementById('gantt-view-mode');
-                    // Default to 'Month' if the select element somehow isn't found
                     const initialViewMode = viewModeSelect ? viewModeSelect.value : 'Month';
-
-                    // Set the initial view mode for the newly created Gantt chart
                     window.currentGanttChart.change_view_mode(initialViewMode);
                     console.log(`Gantt chart initialized/re-rendered in ${initialViewMode} view.`);
 
                 } else {
                     console.error("Gantt object is NOT defined. Cannot initialize chart.");
-                    const ganttSvg = document.getElementById('gantt');
+                    const ganttSvg = document.getElementById('gantt'); // Corrected ID: 'gantt'
                     if (ganttSvg) {
                         ganttSvg.innerHTML = '<text x="10" y="20" fill="red">Could not load Gantt chart (library not found).</text>';
                     }
