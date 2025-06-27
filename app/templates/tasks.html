@@ -108,7 +108,7 @@
                                 Status: ${task.status})
                                 <a href="/edit_task/${task.id}">Edit</a>
                                 <form class="delete-task-form" data-task-id="${task.id}" action="/delete_task/${task.id}" method="POST" style="display:inline;">
-                                    <button type="submit" onclick="return confirm('Are you sure you want to delete this task?');">Delete</button>
+                                    <button type="submit">Delete</button>
                                 </form>
                             </li>
                         `;
@@ -153,31 +153,51 @@
                 }
             }
             // Function to handle delete form submission
+            // Function to handle delete form submission
             async function handleDeleteSubmit(event) {
                 event.preventDefault(); // Prevent default form submission
 
                 const form = event.target;
                 const taskId = form.dataset.taskId;
-                const confirmDelete = confirm('Are you sure you want to delete this task?'); // This is the *only* confirm now
+                const confirmDelete = confirm('Are you sure you want to delete this task?');
 
                 if (confirmDelete) {
                     try {
                         const response = await fetch(form.action, {
-                            method: form.method
+                            method: form.method,
+                            // *** CRITICAL ADDITION: Send X-Requested-With header ***
+                            headers: {
+                                'X-Requested-With': 'XMLHttpRequest'
+                            }
                         });
-                        const data = await response.json(); // Expecting JSON response
 
-                        if (data.success) {
-                            fetchAndUpdateUI(); // <--- THIS IS THE KEY CALL
+                        // Check if the response is actually JSON before trying to parse it
+                        const contentType = response.headers.get('content-type');
+                        if (contentType && contentType.indexOf('application/json') !== -1) {
+                            const data = await response.json(); // Expecting JSON response
+
+                            if (response.ok && data.success) { // Check response.ok for HTTP status, and data.success for API logic
+                                displayFlashMessages([{ category: 'success', message: data.message || 'Task deleted successfully!' }]);
+                                fetchAndUpdateUI(); // <--- THIS IS THE KEY CALL to re-render
+                            } else {
+                                console.error('Failed to delete task (server logic error):', data.message || 'Unknown error');
+                                displayFlashMessages([{ category: 'error', message: data.message || 'Failed to delete task.' }]);
+                            }
                         } else {
-                            displayFlashMessages([{ category: 'error', message: data.message || 'Failed to delete task.' }]);
+                            // This means the server sent back HTML, likely a redirect
+                            console.error('Received non-JSON response from delete endpoint. This usually means a redirect occurred or server error page.');
+                            // Optionally, force a full page reload here if a non-AJAX response is received
+                            // window.location.reload();
+                            displayFlashMessages([{ category: 'error', message: 'Unexpected server response during deletion. Please try again.' }]);
                         }
+
                     } catch (error) {
-                        console.error('Error deleting task:', error);
+                        console.error('Error deleting task (network/parsing error):', error);
                         displayFlashMessages([{ category: 'error', message: 'Network error or server issue during deletion.' }]);
                     }
                 }
             }
+
 
             // Function to attach event listeners to delete forms
             function attachDeleteEventListeners() {

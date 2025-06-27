@@ -297,15 +297,15 @@ def delete_task(task_id):
             flash("You are not authorized to delete this task.", "error")
             return redirect(url_for('main.projects'))
 
-    project_id = task.project.id # Store project_id before deleting task
-    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    project_id = task.project.id
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest' # <--- This is the key
 
     try:
         db.session.delete(task)
         db.session.commit()
-        if is_ajax:
+        if is_ajax: # <--- If AJAX, return JSON
             return jsonify({'success': True, 'message': 'Task deleted successfully!'})
-        else:
+        else: # <--- If NOT AJAX, redirect (this is what's happening)
             flash('Task deleted successfully!', 'success')
             return redirect(url_for('main.view_project', project_id=project_id))
     except Exception as e:
