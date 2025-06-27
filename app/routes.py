@@ -291,7 +291,6 @@ def edit_task(task_id):
 def delete_task(task_id):
     task = Task.query.get_or_404(task_id)
     if task.project.user != current_user:
-        # If AJAX, return forbidden status
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': False, 'message': "You are not authorized to delete this task."}), 403
         else:
@@ -318,7 +317,7 @@ def delete_task(task_id):
             return redirect(url_for('main.view_project', project_id=project_id))
         
 # Inside routes.py, define after other routes
-@bp.route('/api/projects/<int:project_id>/tasks', methods=['GET'])
+@bp.route('/api/projects/<int:project_id>/tasks', methods=['GET']) # <--- Note: your JS calls /projects/ID/tasks_api
 @login_required
 def api_get_project_tasks(project_id):
     project = Project.query.filter_by(id=project_id, user=current_user).first_or_404()
@@ -342,7 +341,7 @@ def api_get_project_tasks(project_id):
         start_date_formatted = task.start_date.strftime('%Y-%m-%d') if task.start_date else ''
         end_date_formatted = task.end_date.strftime('%Y-%m-%d') if task.end_date else ''
 
-        custom_class = 'bar-blue'
+        custom_class = 'bar-blue' # Default
         if task.status == 'Completed':
             custom_class = 'bar-green'
         elif task.status == 'In Progress':
@@ -363,8 +362,10 @@ def api_get_project_tasks(project_id):
         gantt_tasks_data.append(gantt_task_item)
 
     return jsonify({
+        'success': True, # <--- Add this
         'tasks': tasks_data,
-        'gantt_data': gantt_tasks_data
+        'gantt_tasks': gantt_tasks_data, # <--- Make sure this key matches your JS
+        'messages': [] # <--- Add this, or populate with relevant messages if needed
     })
 
 # In routes.py
