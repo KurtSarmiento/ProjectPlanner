@@ -1,290 +1,111 @@
 <!DOCTYPE html>
 <html lang="en">
-    <head>
-        <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Project Planner - {{ project.name }} Tasks</title>
-        <link rel="stylesheet" href="{{ url_for('static', filename='frappe-gantt.css') }}">
-        <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    </head>
-    <body>
-        <header>
-            <h1>{{ project.name }} Tasks</h1>
-            <nav>
-                <ul>
-                    <li><a href="/">Home</a></li>
-                    <li><a href="/projects">Projects</a></li> {# Link back to projects list #}
-                    {% if current_user.is_authenticated %}
-                        <li><a href="/logout">Logout ({{ current_user.username }})</a></li>
-                    {% else %}
-                        <li><a href="/register">Register</a></li>
-                        <li><a href="/login">Login</a></li>
-                    {% endif %}
-                </ul>
-            </nav>
-        </header>
-
-        <main>
-            <h2>{{ project.name }} Tasks</h2>
-
-            {# Flashed messages container (for initial page load, and populated by JS for AJAX) #}
-            {% with messages = get_flashed_messages(with_categories=true) %}
-            {% if messages %}
-                <ul class="flashes">
-                {% for category, message in messages %}
-                <li class="{{ category }}">{{ message }}</li>
-                {% endfor %}
-                </ul>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}"> <!-- Added CSRF token -->
+    <title>{{ project.name }} Tasks</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='frappe-gantt.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+    <header>
+        <nav>
+            <a href="{{ url_for('main.index') }}">Home</a>
+            <a href="{{ url_for('main.projects') }}">Projects</a>
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('main.logout') }}">Logout ({{ current_user.username }})</a>
+            {% else %}
+                <a href="{{ url_for('main.register') }}">Register</a>
+                <a href="{{ url_for('main.login') }}">Login</a>
             {% endif %}
-            {% endwith %}
+        </nav>
+    </header>
 
-            <p><a href="{{ url_for('main.add_task_to_project', project_id=project.id) }}" class="button">Add New Task</a></p>
+    <h1>{{ project.name }} Tasks</h1>
 
-            <h3>Existing Tasks for {{ project.name }}:</h3>
-            <ul id="task-list"> {# Added ID for JavaScript #}
-                {# Tasks are initially rendered by Jinja, but will be re-rendered by JS after AJAX #}
-                {% if tasks %}
-                {% for task in tasks %}
-                    <li>
-                        <strong>{{ task.name }}</strong>
-                        (Starts: {{ task.start_date.strftime('%Y-%m-%d') if task.start_date else 'N/A' }},
-                        Ends: {{ task.end_date.strftime('%Y-%m-%d') if task.end_date else 'N/A' }},
-                        Progress: {{ task.progress }}%,
-                        Status: {{ task.status }})
-                        <a href="{{ url_for('main.edit_task', task_id=task.id) }}">Edit</a>
-                        <form class="delete-task-form" data-task-id="{{ task.id }}" action="{{ url_for('main.delete_task', task_id=task.id) }}" method="POST" style="display:inline;"> {# Added class and data-task-id #}
-                            <button type="submit">Delete</button>
-                        </form>
-                    </li>
-                {% endfor %}
-                {% else %}
-                <p>No tasks yet for this project. Add one above!</p>
-                {% endif %}
-            </ul>
+    <!-- Flashed messages container -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        <ul class="flashes">
+            {% for category, message in messages %}
+                <li class="{{ category }}">{{ message }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+    {% endwith %}
 
-            <hr>
-            <h3>{{ project.name }} Timeline (Gantt Chart)</h3>
-            <div class="gantt-controls">
-                <label for="gantt-view-mode">View Mode:</label>
-                <select id="gantt-view-mode">
-                    <option value="Day">Day</option>
-                    <option value="Week" selected>Week</option> {# Default to Week #}
-                    <option value="Month">Month</option>
-                    <option value="Quarter">Quarter</option>
-                    <option value="Hour">Hour</option> {# Optional: Very granular view #}
-                </select>
-            </div>
-            <div id="gantt-chart-container" class="gantt-container"> {# Added ID for JavaScript #}
-                <svg id="gantt"></svg>
-            </div>
+    <a href="{{ url_for('main.add_task_to_project', project_id=project.id) }}">Add New Task</a>
 
-        </main>
+    <h2>Existing Tasks for {{ project.name }}:</h2>
+    <ul id="task-list">
+        {% if tasks %}
+        {% for task in tasks %}
+            <li id="task-{{ task.id }}">
+                {{ task.name }}
+                (Starts: {{ task.start_date.strftime('%Y-%m-%d') if task.start_date else 'N/A' }},
+                Ends: {{ task.end_date.strftime('%Y-%m-%d') if task.end_date else 'N/A' }},
+                Progress: {{ task.progress }}%,
+                Status: {{ task.status }})
+                <a href="{{ url_for('main.edit_task', task_id=task.id) }}">Edit</a>
+                <form action="{{ url_for('main.delete_task', task_id=task.id) }}" method Eze="POST" style="display:inline;" class="delete-task-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="delete-task-btn" data-task-id="{{ task.id }}">Delete</button>
+                </form>
+            </li>
+        {% endfor %}
+        {% else %}
+            <li>No tasks yet for this project. Add one above!</li>
+        {% endif %}
+    </ul>
 
-        <footer>
-            <p>&copy; 2025 Project Planner</p>
-        </footer>
-        {# FIRST: Load the Frappe Gantt library #}
-        <script src="{{ url_for('static', filename='gantt.js') }}"> </script>
+    <h2>{{ project.name }} Timeline (Gantt Chart)</h2>
+    <div>
+        View Mode:
+        <button class="view-mode" data-mode="Day">Day</button>
+        <button class="view-mode" data-mode="Week">Week</button>
+        <button class="view-mode" data-mode="Month">Month</button>
+        <button class="view-mode" data-mode="Quarter">Quarter</button>
+        <button class="view-mode" data-mode="Hour">Hour</button>
+    </div>
+    <div id="gantt-chart"></div>
 
-        {# SECOND: Load your custom script that uses Frappe Gantt #}
-        <script>
-            // Data passed from Flask for initial Gantt chart rendering
-            // *** CRITICAL FIX: Explicitly parse JSON string from Jinja output using backticks ***
-            const APP_GANTT_DATA_STRING = {{ gantt_tasks_json | tojson | safe }};
-            const APP_GANTT_DATA = JSON.parse(APP_GANTT_DATA_STRING);
-            console.log("Initial APP_GANTT_DATA received (after parse):", APP_GANTT_DATA); // This should now log an Array
+    <div id="commentModal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">&times;</span>
+            <h2>Comment for Task: <span id="commentTaskName"></span></h2>
+            <textarea id="taskCommentTextarea" rows="4"></textarea>
+            <button id="saveCommentButton">Save Comment</button>
+            <ul id="modal-flashes" class="modal-flashes"></ul>
+        </div>
+    </div>
 
-            const PROJECT_ID = {{ project.id }};
-            let currentGanttChart;
+    <footer>
+        <p>&copy; 2025 Project Planner</p>
+    </footer>
 
-            // --- ALL HELPER FUNCTIONS (renderTaskList, displayFlashMessages, fetchAndUpdateUI, handleDeleteSubmit, attachDeleteEventListeners, renderGanttChart) ---
-
-            // Function to render/re-render the task list
-            function renderTaskList(tasks) {
-                const taskListUl = document.getElementById('task-list');
-                if (!taskListUl) return;
-
-                let html = '';
-                if (tasks.length === 0) {
-                    html = '<p>No tasks yet for this project. Add one above!</p>';
-                } else {
-                    tasks.forEach(task => {
-                        html += `
-                            <li>
-                                <strong>${task.name}</strong>
-                                (Starts: ${task.start_date || 'N/A'},
-                                Ends: ${task.end_date || 'N/A'},
-                                Progress: ${task.progress}%,
-                                Status: ${task.status})
-                                <a href="/edit_task/${task.id}">Edit</a>
-                                <form class="delete-task-form" data-task-id="${task.id}" action="/delete_task/${task.id}" method="POST" style="display:inline;">
-                                    <button type="submit">Delete</button>
-                                </form>
-                            </li>
-                        `;
-                    });
-                }
-                taskListUl.innerHTML = html;
-                attachDeleteEventListeners(); // Re-attach listeners after re-rendering
+    <!-- Load JavaScript files -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="{{ url_for('static', filename='frappe-gantt.min.js') }}"></script>
+    <script src="{{ url_for('static', filename='gantt.js') }}"></script>
+    <script src="{{ url_for('static', filename='tasks.js') }}"></script> <!-- New script for task interactions -->
+    <script>
+        // Initialize Gantt chart
+        var tasks = {{ gantt_tasks_json | safe }};
+        var gantt = new Gantt("#gantt-chart", tasks, {
+            view_mode: 'Week',
+            date_format: 'YYYY-MM-DD',
+            on_click: function(task) {
+                // Show comment modal when clicking a Gantt bar
+                showCommentModal(task.id, task.name);
             }
+        });
 
-            // Function to display flash messages
-            function displayFlashMessages(messages) {
-                const flashContainer = document.querySelector('.flashes');
-                if (!flashContainer) return;
-
-                flashContainer.innerHTML = ''; // Clear existing messages
-                messages.forEach(msg => {
-                    const li = document.createElement('li');
-                    li.className = msg.category;
-                    li.textContent = msg.message;
-                    flashContainer.appendChild(li);
-                });
-            }
-
-            // Function to fetch and update UI
-            async function fetchAndUpdateUI() {
-                try {
-                    const response = await fetch(`/api/projects/${PROJECT_ID}/tasks`);
-                    const data = await response.json();
-
-                    if (data.success) { // Expecting data.success from the API
-                        renderTaskList(data.tasks);
-                        renderGanttChart(data.gantt_tasks); // Update Gantt chart as well
-                        displayFlashMessages(data.messages || []); // Display flashed messages from AJAX
-                    } else {
-                        console.error('Failed to fetch tasks:', data.message);
-                        displayFlashMessages([{ category: 'error', message: data.message || 'Failed to update tasks.' }]);
-                    }
-                } catch (error) {
-                    console.error('Error fetching tasks:', error);
-                    displayFlashMessages([{ category: 'error', message: 'Network error or server issue.' }]);
-                }
-            }
-            // Function to handle delete form submission
-            // Function to handle delete form submission
-            async function handleDeleteSubmit(event) {
-                event.preventDefault(); // Prevent default form submission
-
-                const form = event.target;
-                const taskId = form.dataset.taskId;
-                const confirmDelete = confirm('Are you sure you want to delete this task?');
-
-                if (confirmDelete) {
-                    try {
-                        const response = await fetch(form.action, {
-                            method: form.method,
-                            // *** CRITICAL ADDITION: Send X-Requested-With header ***
-                            headers: {
-                                'X-Requested-With': 'XMLHttpRequest'
-                            }
-                        });
-
-                        // Check if the response is actually JSON before trying to parse it
-                        const contentType = response.headers.get('content-type');
-                        if (contentType && contentType.indexOf('application/json') !== -1) {
-                            const data = await response.json(); // Expecting JSON response
-
-                            if (response.ok && data.success) { // Check response.ok for HTTP status, and data.success for API logic
-                                displayFlashMessages([{ category: 'success', message: data.message || 'Task deleted successfully!' }]);
-                                fetchAndUpdateUI(); // <--- THIS IS THE KEY CALL to re-render
-                            } else {
-                                console.error('Failed to delete task (server logic error):', data.message || 'Unknown error');
-                                displayFlashMessages([{ category: 'error', message: data.message || 'Failed to delete task.' }]);
-                            }
-                        } else {
-                            // This means the server sent back HTML, likely a redirect
-                            console.error('Received non-JSON response from delete endpoint. This usually means a redirect occurred or server error page.');
-                            // Optionally, force a full page reload here if a non-AJAX response is received
-                            // window.location.reload();
-                            displayFlashMessages([{ category: 'error', message: 'Unexpected server response during deletion. Please try again.' }]);
-                        }
-
-                    } catch (error) {
-                        console.error('Error deleting task (network/parsing error):', error);
-                        displayFlashMessages([{ category: 'error', message: 'Network error or server issue during deletion.' }]);
-                    }
-                }
-            }
-
-
-            // Function to attach event listeners to delete forms
-            function attachDeleteEventListeners() {
-                document.querySelectorAll('.delete-task-form').forEach(form => {
-                    // Remove existing listeners to prevent duplicates (important for re-rendering)
-                    form.removeEventListener('submit', handleDeleteSubmit);
-                    // Add new listener
-                    form.addEventListener('submit', handleDeleteSubmit);
-                });
-            }
-
-            // --- Function to render/re-render the Gantt chart ---
-            // Inside your renderGanttChart function:
-            // Inside your renderGanttChart function:
-            function renderGanttChart(tasks) {
-                if (typeof Gantt !== 'undefined') {
-                    const ganttSvg = document.getElementById('gantt'); // Corrected ID: 'gantt'
-                    if (!ganttSvg) {
-                        console.error("Gantt chart SVG element not found!");
-                        return;
-                    }
-                    ganttSvg.innerHTML = ''; // Clear any existing chart
-
-                    window.currentGanttChart = new Gantt(ganttSvg, tasks, {
-                        custom_popup_html: function(task) {
-                            // Your custom popup HTML logic goes here
-                            return `
-                                <div class="details-container">
-                                    <h5>${task.name}</h5>
-                                    <p>Start: ${task.start}</p>
-                                    <p>End: ${task.end}</p>
-                                    <p>Progress: ${task.progress}%</p>
-                                    <p>Status: ${task.status}</p>
-                                    ${task.dependencies ? `<p>Depends on: ${task.dependencies}</p>` : ''}
-                                </div>
-                            `;
-                        },
-                        // --- ADD THESE TWO LINES TO DISABLE DRAGGING ---
-                        on_date_change: null,      // Disables dragging bars to change start/end dates
-                        on_progress_change: null   // Disables dragging the progress handle
-                        // ----------------------------------------------
-                    });
-
-                    const viewModeSelect = document.getElementById('gantt-view-mode');
-                    const initialViewMode = viewModeSelect ? viewModeSelect.value : 'Month';
-                    window.currentGanttChart.change_view_mode(initialViewMode);
-                    console.log(`Gantt chart initialized/re-rendered in ${initialViewMode} view.`);
-
-                } else {
-                    console.error("Gantt object is NOT defined. Cannot initialize chart.");
-                    const ganttSvg = document.getElementById('gantt'); // Corrected ID: 'gantt'
-                    if (ganttSvg) {
-                        ganttSvg.innerHTML = '<text x="10" y="20" fill="red">Could not load Gantt chart (library not found).</text>';
-                    }
-                }
-            }
-            // --- END OF HELPER FUNCTIONS ---
-
-            // Initial render of Gantt chart and attach event listeners when page loads
-            document.addEventListener('DOMContentLoaded', () => {
-                fetchAndUpdateUI();
-                attachDeleteEventListeners();
-
-                const viewModeSelect = document.getElementById('gantt-view-mode');
-                if (viewModeSelect) {
-                    viewModeSelect.addEventListener('change', (event) => {
-                        const selectedMode = event.target.value;
-                        if (window.currentGanttChart) {
-                            window.currentGanttChart.change_view_mode(selectedMode);
-                            console.log(`Gantt view mode changed to: ${selectedMode}`);
-                        } else {
-                            console.warn("Gantt chart not initialized yet. Cannot change view mode.");
-                        }
-                    });
-                }
-            });
-        </script>
-        {# Your static gantt.js might have additional Frappe Gantt setup, ensure it's still included if needed #}
-        {# If gantt.js only initializes the chart, its content might now be redundant with renderGanttChart in this file #}
-    </body>
+        // View mode switching
+        $('.view-mode').click(function() {
+            var mode = $(this).data('mode');
+            gantt.change_view_mode(mode);
+        });
+    </script>
+</body>
 </html>

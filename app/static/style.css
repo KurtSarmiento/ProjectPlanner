@@ -106,3 +106,91 @@
     pointer-events: none !important; /* Prevents all mouse events */
     cursor: default !important; /* Changes cursor to default, overriding resize/pointer */
 }
+
+/* General Modal Styles (if not already present or needs adjustment) */
+.modal {
+    display: none; /* Hidden by default */
+    position: fixed; /* Stay in place */
+    z-index: 1001; /* Sit on top (higher than other content, higher than other modals) */
+    left: 0;
+    top: 0;
+    width: 100%; /* Full width */
+    height: 100%; /* Full height */
+    overflow: auto; /* Enable scroll if needed */
+    background-color: rgba(0,0,0,0.4); /* Black w/ opacity */
+    padding-top: 60px; /* Location of the box */
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: 5% auto; /* 5% from the top and centered */
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%; /* Could be more or less, depending on screen size */
+    max-width: 600px; /* Max width for larger screens */
+    border-radius: 8px;
+    position: relative;
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2), 0 6px 20px 0 rgba(0,0,0,0.19);
+    animation-name: animatetop;
+    animation-duration: 0.4s
+}
+
+/* Add specific styles for the textarea and button within the comment modal */
+#taskCommentTextarea {
+    width: calc(100% - 20px); /* Adjust width considering padding */
+    padding: 10px;
+    margin-bottom: 15px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+    box-sizing: border-box; /* Include padding in element's total width and height */
+}
+
+#saveCommentButton {
+    background-color: #007bff; /* Primary blue */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    margin-top: 10px;
+}
+
+#saveCommentButton:hover {
+    background-color: #0056b3;
+}
+
+/* Styles for modal-specific flash messages */
+.modal-flashes {
+    list-style-type: none;
+    padding: 0;
+    margin-top: 15px;
+}
+.modal-flashes li {
+    padding: 8px 15px;
+    margin-bottom: 8px;
+    border-radius: 4px;
+}
+.modal-flashes li.success {
+    background-color: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+.modal-flashes li.error {
+    background-color: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+.delete-task-btn {
+    background-color: #d9534f;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+.delete-task-btn:hover {
+    background-color: #c9302c;
+}

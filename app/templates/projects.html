@@ -4,68 +4,63 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Projects</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}"> <!-- Assuming a CSS file -->
 </head>
 <body>
     <header>
-        <h1>My Projects</h1>
         <nav>
-            <ul>
-                <li><a href="/">Home</a></li>
-                <li><a href="/projects">Projects</a></li> {# Link to this page #}
-                {% if current_user.is_authenticated %}
-                    <li><a href="/logout">Logout ({{ current_user.username }})</a></li>
-                {% else %}
-                    <li><a href="/register">Register</a></li>
-                    <li><a href="/login">Login</a></li>
-                {% endif %}
-            </ul>
+            <a href="{{ url_for('main.index') }}">Home</a>
+            <a href="{{ url_for('main.projects') }}">Projects</a> <!-- Link to this page -->
+            {% if current_user.is_authenticated %}
+                <a href="{{ url_for('main.logout') }}">Logout ({{ current_user.username }})</a>
+            {% else %}
+                <a href="{{ url_for('main.register') }}">Register</a>
+                <a href="{{ url_for('main.login') }}">Login</a>
+            {% endif %}
         </nav>
     </header>
 
-    <main>
-        <h2>Create New Project</h2>
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
+    <h1>Create New Project</h1>
+
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
             <ul class="flashes">
-            {% for category, message in messages %}
-              <li class="{{ category }}">{{ message }}</li>
-            {% endfor %}
+                {% for category, message in messages %}
+                    <li class="{{ category }}">{{ message }}</li>
+                {% endfor %}
             </ul>
-          {% endif %}
-        {% endwith %}
+        {% endif %}
+    {% endwith %}
 
-        <form method="POST" action="{{ url_for('main.projects') }}">
-            <label for="project_name">Project Name:</label><br>
-            <input type="text" id="project_name" name="project_name" required><br><br>
+    <form method="POST" action="{{ url_for('main.projects') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div>
+            <label for="project_name">Project Name:</label>
+            <input type="text" id="project_name" name="project_name" required>
+        </div>
+        <div>
+            <label for="description">Description (Optional):</label>
+            <input type="text" id="description" name="description">
+        </div>
+        <button type="submit">Create</button>
+    </form>
 
-            <label for="project_description">Description (Optional):</label><br>
-            <textarea id="project_description" name="project_description" rows="4" cols="50"></textarea><br><br>
-
-            <input type="submit" value="Create Project">
-        </form>
-
-        <hr>
-
-        <h2>Your Projects:</h2>
-        {% if projects %}
+    <h2>Your Projects:</h2>
+    {% if projects %}
         <ul>
             {% for project in projects %}
-            <li>
-                <strong><a href="{{ url_for('main.view_project', project_id=project.id) }}">{{ project.name }}</a></strong>
-                {% if project.description %}<p>{{ project.description }}</p>{% endif %}
-                {# Add edit/delete project links here later if desired #}
-            </li>
+                <li>
+                    <a href="{{ url_for('main.view_project', project_id=project.id) }}">{{ project.name }}</a>
+                    {% if project.description %}<br>{{ project.description }}{% endif %}
+                </li>
             {% endfor %}
         </ul>
-        {% else %}
+    {% else %}
         <p>No projects yet. Create one above!</p>
-        {% endif %}
-
-    </main>
+    {% endif %}
 
     <footer>
-        <p>&copy; 2025 Project Planner</p>
+        <p>© 2025 Project Planner</p>
     </footer>
 </body>
 </html>
