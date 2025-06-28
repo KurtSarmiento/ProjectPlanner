@@ -331,8 +331,10 @@ def api_get_all_projects():
         project_tasks = Task.query.filter_by(project=project).order_by(Task.start_date.asc()).all()
         gantt_tasks_data = []
         for task in project_tasks:
-            start_date_formatted = task.start_date.strftime('%Y-%m-%d') if task.start_date else ''
-            end_date_formatted = task.end_date.strftime('%Y-%m-%d') if task.end_date else ''
+            start_date_formatted = task.start_date.strftime('%Y-%m-%d') if task.start_date else None
+            end_date_formatted = task.end_date.strftime('%Y-%m-%d') if task.end_date else None
+            if not start_date_formatted or not end_date_formatted:
+                continue
             custom_class = 'bar-blue'
             if task.status == 'Completed':
                 custom_class = 'bar-green'
@@ -340,23 +342,26 @@ def api_get_all_projects():
                 custom_class = 'bar-yellow'
             elif task.status == 'Blocked':
                 custom_class = 'bar-red'
+            dependencies = task.dependencies if task.dependencies else ''
+            if isinstance(dependencies, list):
+                dependencies = ' '.join(str(dep) for dep in dependencies if dep)
             gantt_task_item = {
                 'id': str(task.id),
                 'name': task.name,
                 'start': start_date_formatted,
                 'end': end_date_formatted,
-                'progress': task.progress,
+                'progress': task.progress or 0,
                 'custom_class': custom_class,
-                'comment': task.comment if task.comment else ''
+                'comment': task.comment if task.comment else '',
+                'dependencies': dependencies
             }
-            if task.dependencies:
-                gantt_task_item['dependencies'] = task.dependencies
             gantt_tasks_data.append(gantt_task_item)
-        projects_data.append({
-            'id': project.id,
-            'name': project.name,
-            'gantt_tasks': gantt_tasks_data
-        })
+        if gantt_tasks_data:
+            projects_data.append({
+                'id': project.id,
+                'name': project.name,
+                'gantt_tasks': gantt_tasks_data
+            })
     return jsonify({
         'success': True,
         'projects': projects_data
@@ -381,6 +386,7 @@ def api_get_project_tasks(project_id):
             'end_date': task.end_date.strftime('%Y-%m-%d') if task.end_date else '',
             'progress': task.progress,
             'status': task.status,
+            'dependencies': task.dependencies if task.dependencies else '',
             'comment': task.comment if task.comment else ''  # Add comment here
         })
         start_date_formatted = task.start_date.strftime('%Y-%m-%d') if task.start_date else ''

@@ -5,18 +5,16 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Projects</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <!-- Add these scripts -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.6.0/dist/frappe-gantt.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.5.0/dist/frappe-gantt.min.js"></script>
     <script src="{{ url_for('static', filename='js/projects.js') }}"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/frappe-gantt.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
     <header>
         <nav>
             <a href="{{ url_for('main.index') }}">Home</a>
-            <a href="{{ url_for('main.projects') }}">Projects</a> <!-- Link to this page -->
+            <a href="{{ url_for('main.projects') }}">Projects</a>
             {% if current_user.is_authenticated %}
                 <a href="{{ url_for('main.logout') }}">Logout ({{ current_user.username }})</a>
             {% else %}
@@ -65,13 +63,6 @@
         {% endif %}
     </ul>
     <div id="gantt-charts-container"></div>
-
-    <div id="commentModal" class="modal" style="display:none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border: 1px solid #ccc; z-index: 1000;">
-        <span class="close-button" style="float: right; cursor: pointer;">×</span>
-        <h3>Edit Comment for <span id="commentTaskName"></span></h3>
-        <textarea id="taskCommentTextarea" style="width: 300px; height: 100px; margin-top: 10px;"></textarea>
-        <button id="saveCommentButton" style="margin-top: 10px;">Save</button>
-    </div>
 
     <footer>
         <p>© 2025 Project Planner</p>
