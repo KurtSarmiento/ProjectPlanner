@@ -8,76 +8,67 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
-    <h1>Edit Task for Project: {{ current_project.name }}</h1>
-
-    <form id="edit-task-form" action="{{ url_for('main.edit_task', task_id=task.id) }}" method="POST">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"> <!-- Added CSRF token -->
+<h1>Edit Task: {{ task.name }}</h1>
+    <form method="POST" action="">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div>
             <label for="task_name">Task Name:</label>
             <input type="text" id="task_name" name="task_name" value="{{ task.name }}" required>
         </div>
         <div>
-            <label for="start_date">Start Date:</label>
+            <label for="start_date">Start Date (YYYY-MM-DD):</label>
             <input type="date" id="start_date" name="start_date" value="{{ task.start_date.strftime('%Y-%m-%d') if task.start_date else '' }}">
         </div>
         <div>
-            <label for="end_date">End Date:</label>
+            <label for="end_date">End Date (YYYY-MM-DD):</label>
             <input type="date" id="end_date" name="end_date" value="{{ task.end_date.strftime('%Y-%m-%d') if task.end_date else '' }}">
         </div>
         <div>
-            <label for="progress">Progress (%):</label>
-            <input type="number" id="progress" name="progress" value="{{ task.progress }}" min="0" max="100">
+            <label for="progress">Progress (0-100):</label>
+            <input type="number" id="progress" name="progress" min="0" max="100" value="{{ task.progress }}">
         </div>
         <div>
             <label for="status">Status:</label>
-            <select id="status" name="status" required>
+            <select id="status_select" name="status" onchange="toggleOtherStatus(this)">
                 <option value="To Do" {% if task.status == 'To Do' %}selected{% endif %}>To Do</option>
                 <option value="In Progress" {% if task.status == 'In Progress' %}selected{% endif %}>In Progress</option>
                 <option value="Completed" {% if task.status == 'Completed' %}selected{% endif %}>Completed</option>
                 <option value="Blocked" {% if task.status == 'Blocked' %}selected{% endif %}>Blocked</option>
+                <option value="Other" {% if task.status not in ['To Do', 'In Progress', 'Completed', 'Blocked'] %}selected{% endif %}>Other</option>
             </select>
+            <input type="text" id="status_other" name="status_other" value="{% if task.status not in ['To Do', 'In Progress', 'Completed', 'Blocked'] %}{{ task.status }}{% endif %}" style="display: none;" placeholder="Enter custom status">
         </div>
         <div>
-            <label for="dependencies">Dependencies (tasks from your projects):</label>
-            <select id="dependencies" name="dependencies" multiple>
-                {% set current_dependencies = task.dependencies.split(',') if task.dependencies else [] %}
-                {% for task_option in all_tasks %}
-                    {% if task_option.id != task.id %}
-                        <option value="{{ task_option.id }}"
-                                {% if task_option.id|string in current_dependencies %}selected{% endif %}>
-                            {{ task_option.name }} ({{ task_option.project.name }})
-                        </option>
-                    {% endif %}
+            <label for="dependencies">Dependency (select one):</label>
+            <select id="dependencies" name="dependencies">
+                <option value="None" {% if not task.dependencies %}selected{% endif %}>None</option>
+                {% for t in current_project.tasks if t.id != task.id %}
+                    <option value="{{ t.name }}" {% if task.dependencies and t.name == task.dependencies %}selected{% endif %}>{{ t.name }}</option>
                 {% endfor %}
             </select>
         </div>
         <div>
             <label for="comment">Comment:</label>
-            <textarea id="comment" name="comment">{{ task.comment if task.comment else '' }}</textarea>
+            <input type="text" id="comment" name="comment" value="{{ task.comment if task.comment else '' }}">
         </div>
-        <button type="submit">Update Task</button>
+        <button type="submit">Update</button>
     </form>
-
-    <a href="{{ url_for('main.view_project', project_id=current_project.id) }}">Back to {{ current_project.name }} Tasks</a>
-
-    <div id="errorModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>Error!</h2>
-            <ul id="modal-flashes" class="modal-flashes"></ul>
-        </div>
-    </div>
-
-    <div id="successModal" class="modal">
-        <div class="modal-content">
-            <span class="close-button">&times;</span>
-            <h2>Success!</h2>
-            <p id="success-message"></p>
-            <button onclick="closeModal('successModal')">OK</button>
-        </div>
-    </div>
-
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="{{ url_for('static', filename='tasks.js') }}"></script> <!-- Load tasks.js -->
+    <script>
+        function toggleOtherStatus(select) {
+            const otherInput = document.getElementById('status_other');
+            if (select.value === 'Other') {
+                otherInput.style.display = 'block';
+                otherInput.name = 'status';
+                document.querySelector('#status_select').name = '';
+            } else {
+                otherInput.style.display = 'none';
+                otherInput.name = '';
+                document.querySelector('#status_select').name = 'status';
+            }
+        }
+        window.onload = function() {
+            toggleOtherStatus(document.getElementById('status_select'));
+        };
+    </script>
 </body>
 </html>

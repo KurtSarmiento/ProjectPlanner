@@ -86,25 +86,16 @@
 
     <!-- Load JavaScript files -->
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="{{ url_for('static', filename='frappe-gantt.min.js') }}"></script>
-    <script src="{{ url_for('static', filename='gantt.js') }}"></script>
     <script src="{{ url_for('static', filename='tasks.js') }}"></script> <!-- New script for task interactions -->
+    <div id="gantt"></div>
+    <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.5.0/dist/frappe-gantt.min.js"></script>
     <script>
-        // Initialize Gantt chart
-        var tasks = {{ gantt_tasks_json | safe }};
-        var gantt = new Gantt("#gantt-chart", tasks, {
-            view_mode: 'Week',
-            date_format: 'YYYY-MM-DD',
-            on_click: function(task) {
-                // Show comment modal when clicking a Gantt bar
-                showCommentModal(task.id, task.name);
-            }
-        });
-
-        // View mode switching
-        $('.view-mode').click(function() {
-            var mode = $(this).data('mode');
-            gantt.change_view_mode(mode);
+        const tasks = {{ gantt_tasks_json | safe }};
+        console.log("Gantt tasks data:", tasks);  // Debug in browser console
+        new Gantt("#gantt", tasks, {
+            on_click: task => console.log("Clicked task:", task),
+            view_mode: 'Week',  // Optional: Adjust view mode
+            custom_popup_html: task => `${task.name} (Progress: ${task.progress}%)`
         });
     </script>
 </body>

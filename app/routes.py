@@ -102,6 +102,8 @@ def view_project(project_id):
     project = Project.query.filter_by(id=project_id, user=current_user).first_or_404()
     project_tasks = Task.query.filter_by(project=project).order_by(Task.name).all()
     gantt_tasks_data = []
+    task_name_to_id = {task.name.strip(): str(task.id) for task in project_tasks}  # Strip whitespace
+    print("Task name to ID mapping:", task_name_to_id)  # Debug mapping
     for task in project_tasks:
         start_date_formatted = task.start_date.strftime('%Y-%m-%d') if task.start_date else ''
         end_date_formatted = task.end_date.strftime('%Y-%m-%d') if task.end_date else ''
@@ -121,10 +123,17 @@ def view_project(project_id):
                 'progress': task.progress,
                 'custom_class': custom_class,
             }
-            if task.dependencies:
-                gantt_task_item['dependencies'] = task.dependencies
+            print(f"Task {task.id} raw dependency (name): {task.dependencies}")  # Debug raw value
+            if task.dependencies and task.dependencies != 'None':
+                dep_id = task_name_to_id.get(task.dependencies.strip())
+                print(f"Converted dependency for task {task.id}: {dep_id}")  # Debug conversion
+                if dep_id:
+                    gantt_task_item['dependencies'] = str(dep_id)  # Ensure string format
             gantt_tasks_data.append(gantt_task_item)
+    # Sort by start date
+    gantt_tasks_data.sort(key=lambda x: datetime.strptime(x['start'], '%Y-%m-%d'))
     gantt_tasks_json = json.dumps(gantt_tasks_data)
+    print("Gantt tasks JSON:", gantt_tasks_json)  # Debug final JSON
     return render_template('tasks.html', project=project, tasks=project_tasks, gantt_tasks_json=gantt_tasks_json)
 
 # --- Task Management Routes ---
@@ -142,8 +151,8 @@ def add_task_to_project(project_id):
         start_date_str = request.form.get('start_date')
         end_date_str = request.form.get('end_date')
         progress = request.form.get('progress', 0)
-        status = request.form.get('status')
-        dependencies_str = request.form.get('dependencies')
+        status = request.form.get('status') or request.form.get('status_other')
+        dependency = request.form.get('dependencies')  # Single value now
         errors = []
         if not task_name:
             errors.append('Task name is required.')
@@ -159,16 +168,27 @@ def add_task_to_project(project_id):
         end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
         if start_date and end_date and start_date > end_date:
             errors.append('End date cannot be before start date.')
-        dependencies_to_save = dependencies_str if dependencies_str else None
+        dependencies_str = dependency if dependency != 'None' else None  # Store name or None
         if errors:
+            print("Add task errors:", errors)  # Debug
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
                 return jsonify({'success': False, 'errors': errors}), 400
             for error in errors:
                 flash(error, 'error')
             return render_template('add_task_to_project.html', project=project), 400
-        new_task = Task(name=task_name, start_date=start_date, end_date=end_date, progress=progress, status=status, dependencies=dependencies_to_save, project_id=project.id, user_id=current_user.id)
+        new_task = Task(
+            name=task_name,
+            start_date=start_date,
+            end_date=end_date,
+            progress=progress,
+            status=status,
+            dependencies=dependencies_str,
+            project_id=project.id,
+            user_id=current_user.id
+        )
         db.session.add(new_task)
         db.session.commit()
+        print("New task added:", new_task.id, new_task.name, "dependency:", new_task.dependencies)  # Debug
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return jsonify({'success': True, 'message': 'Task added successfully!', 'task_id': new_task.id, 'project_id': project.id}), 201
         flash('Task added successfully!', 'success')
@@ -190,47 +210,53 @@ def edit_task(task_id):
             return jsonify({'success': False, 'message': 'You do not have permission to edit this task.'}), 403
         flash('You do not have permission to edit this task.', 'error')
         return redirect(url_for('main.projects'))
-    if request.method == 'POST':
-        task_name = request.form.get('task_name')
-        start_date_str = request.form.get('start_date')
-        end_date_str = request.form.get('end_date')
-        progress = request.form.get('progress')
-        status = request.form.get('status')
-        dependencies_str = request.form.get('dependencies')
-        comment = request.form.get('comment')
-        errors = []
-        if not task_name:
-            errors.append('Task name is required.')
-        if not status:
-            errors.append('Status is required.')
-        try:
-            progress = int(progress)
-            if not (0 <= progress <= 100):
-                errors.append('Progress must be between 0 and 100.')
-        except ValueError:
-            errors.append('Progress must be a valid number.')
-        start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
-        end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
-        if start_date and end_date and start_date > end_date:
-            errors.append('End date cannot be before start date.')
-        if errors:
+    try:
+        if request.method == 'POST':
+            task_name = request.form.get('task_name')
+            start_date_str = request.form.get('start_date')
+            end_date_str = request.form.get('end_date')
+            progress = request.form.get('progress')
+            status = request.form.get('status') or request.form.get('status_other')
+            dependency = request.form.get('dependencies')
+            comment = request.form.get('comment')
+            errors = []
+            if not task_name:
+                errors.append('Task name is required.')
+            if not status:
+                errors.append('Status is required.')
+            try:
+                progress = int(progress)
+                if not (0 <= progress <= 100):
+                    errors.append('Progress must be between 0 and 100.')
+            except ValueError:
+                errors.append('Progress must be a valid number.')
+            start_date = datetime.strptime(start_date_str, '%Y-%m-%d').date() if start_date_str else None
+            end_date = datetime.strptime(end_date_str, '%Y-%m-%d').date() if end_date_str else None
+            if start_date and end_date and start_date > end_date:
+                errors.append('End date cannot be before start date.')
+            if errors:
+                print("Edit task errors:", errors)
+                if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                    return jsonify({'success': False, 'errors': errors}), 400
+                for error in errors:
+                    flash(error, 'error')
+                return render_template('edit_task.html', task=task, current_project=task.project), 400
+            task.name = task_name
+            task.start_date = start_date
+            task.end_date = end_date
+            task.progress = progress
+            task.status = status
+            task.dependencies = dependency if dependency != 'None' else None
+            task.comment = comment
+            db.session.commit()
+            print("Task updated:", task.id, task.name, "dependency:", task.dependencies, "status:", task.status)
             if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-                return jsonify({'success': False, 'errors': errors}), 400
-            for error in errors:
-                flash(error, 'error')
-            return render_template('edit_task.html', task=task, current_project=task.project), 400
-        task.name = task_name
-        task.start_date = start_date
-        task.end_date = end_date
-        task.progress = progress
-        task.status = status
-        task.dependencies = dependencies_str if dependencies_str else None
-        task.comment = comment
-        db.session.commit()
-        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            return jsonify({'success': True, 'message': 'Task updated successfully!', 'task_id': task.id, 'project_id': task.project_id}), 200
-        flash('Task updated successfully!', 'success')
-        return redirect(url_for('main.view_project', project_id=task.project_id))
+                return jsonify({'success': True, 'message': 'Task updated successfully!', 'task_id': task.id, 'project_id': task.project_id}), 200
+            flash('Task updated successfully!', 'success')
+            return redirect(url_for('main.view_project', project_id=task.project_id))
+    except Exception as e:
+        print("Unexpected error in edit_task:", str(e))  # Catch all exceptions
+        raise
     return render_template('edit_task.html', task=task, current_project=task.project)
 
 @bp.route('/tasks/<int:task_id>/delete', methods=['POST'])

@@ -8,7 +8,7 @@ class User(db.Model, UserMixin):
     password_hash = db.Column(db.String(128), nullable=False, default='')  # Default empty string, set by set_password
 
     # Relationship: A User can have many Projects
-    projects = db.relationship('Project', backref='user', lazy=True) # Removed cascade
+    projects = db.relationship('Project', backref='user', lazy=True, cascade="all, delete-orphan")
     # Relationship: A User can have many Tasks (optional, uncomment if needed)
     # tasks = db.relationship('Task', backref='user', lazy=True, cascade="all, delete-orphan")
 
@@ -31,7 +31,7 @@ class Project(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
 
     # Relationship: A Project can have many Tasks
-    tasks = db.relationship('Task', backref='project', lazy=True) # Removed cascade
+    tasks = db.relationship('Task', backref='project', lazy=True, cascade="all, delete-orphan")
 
     def __repr__(self):
         return f'<Project {self.id}: {self.name}>'
