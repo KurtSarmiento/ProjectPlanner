@@ -9,65 +9,111 @@
 </head>
 <body>
 <h1>Edit Task: {{ task.name }}</h1>
-    <form method="POST" action="">
+    <form method="POST" action="" onsubmit="return validateDates()">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div>
             <label for="task_name">Task Name:</label>
-            <input type="text" id="task_name" name="task_name" value="{{ task.name }}" required>
+            <select id="task_name_select" name="task_name" onchange="toggleOtherTaskName(this)" required>
+                <option value="Planning" {% if task.name == 'Planning' %}selected{% endif %}>Planning</option>
+                <option value="Budget Request" {% if task.name == 'Budget Request' %}selected{% endif %}>Budget Request</option>
+                <option value="Prepare Logistics" {% if task.name == 'Prepare Logistics' %}selected{% endif %}>Prepare Logistics</option>
+                <option value="Event Proper" {% if task.name == 'Event Proper' %}selected{% endif %}>Event Proper</option>
+                <option value="Liquidation Report" {% if task.name == 'Liquidation Report' %}selected{% endif %}>Liquidation Report</option>
+                <option value="Other" {% if task.name not in ['Planning', 'Budget Request', 'Prepare Logistics', 'Event Proper', 'Liquidation Report'] %}selected{% endif %}>Other</option>
+            </select>
+            <input type="text" id="task_name_other" name="task_name_other" value="{% if task.name not in ['Planning', 'Budget Request', 'Prepare Logistics', 'Event Proper', 'Liquidation Report'] %}{{ task.name }}{% endif %}" style="display: none;" placeholder="Enter custom task name">
         </div>
         <div>
             <label for="start_date">Start Date (YYYY-MM-DD):</label>
-            <input type="date" id="start_date" name="start_date" value="{{ task.start_date.strftime('%Y-%m-%d') if task.start_date else '' }}">
+            <input type="date" id="start_date" name="start_date" value="{{ task.start_date.strftime('%Y-%m-%d') if task.start_date else '' }}" required>
         </div>
         <div>
             <label for="end_date">End Date (YYYY-MM-DD):</label>
-            <input type="date" id="end_date" name="end_date" value="{{ task.end_date.strftime('%Y-%m-%d') if task.end_date else '' }}">
+            <input type="date" id="end_date" name="end_date" value="{{ task.end_date.strftime('%Y-%m-%d') if task.end_date else '' }}" required>
         </div>
         <div>
-            <label for="progress">Progress (0-100):</label>
-            <input type="number" id="progress" name="progress" min="0" max="100" value="{{ task.progress }}">
+            <label for="progress">Progress:</label>
+            <select id="progress" name="progress" required>
+                <option value="0" {% if task.progress == 0 %}selected{% endif %}>0%</option>
+                <option value="25" {% if task.progress == 25 %}selected{% endif %}>25%</option>
+                <option value="50" {% if task.progress == 50 %}selected{% endif %}>50%</option>
+                <option value="75" {% if task.progress == 75 %}selected{% endif %}>75%</option>
+                <option value="100" {% if task.progress == 100 %}selected{% endif %}>100%</option>
+            </select>
         </div>
         <div>
             <label for="status">Status:</label>
-            <select id="status_select" name="status" onchange="toggleOtherStatus(this)">
+            <select id="status" name="status" required>
                 <option value="To Do" {% if task.status == 'To Do' %}selected{% endif %}>To Do</option>
                 <option value="In Progress" {% if task.status == 'In Progress' %}selected{% endif %}>In Progress</option>
                 <option value="Completed" {% if task.status == 'Completed' %}selected{% endif %}>Completed</option>
                 <option value="Blocked" {% if task.status == 'Blocked' %}selected{% endif %}>Blocked</option>
-                <option value="Other" {% if task.status not in ['To Do', 'In Progress', 'Completed', 'Blocked'] %}selected{% endif %}>Other</option>
             </select>
-            <input type="text" id="status_other" name="status_other" value="{% if task.status not in ['To Do', 'In Progress', 'Completed', 'Blocked'] %}{{ task.status }}{% endif %}" style="display: none;" placeholder="Enter custom status">
         </div>
         <div>
-            <label for="dependencies">Dependency (select one):</label>
-            <select id="dependencies" name="dependencies">
+            <label for="dependencies">Dependencies (select multiple, hold Ctrl/Cmd to select more than one):</label>
+            <select id="dependencies" name="dependencies" multiple size="5" required>
                 <option value="None" {% if not task.dependencies %}selected{% endif %}>None</option>
                 {% for t in current_project.tasks if t.id != task.id %}
-                    <option value="{{ t.name }}" {% if task.dependencies and t.name == task.dependencies %}selected{% endif %}>{{ t.name }}</option>
+                    <option value="{{ t.name }}" {% if task.dependencies and t.name in task.dependencies.split(',') %}selected{% endif %}>{{ t.name }}</option>
                 {% endfor %}
             </select>
         </div>
         <div>
             <label for="comment">Comment:</label>
-            <input type="text" id="comment" name="comment" value="{{ task.comment if task.comment else '' }}">
+            <input type="text" id="comment" name="comment" value="{{ task.comment if task.comment else '' }}" required>
         </div>
-        <button type="submit">Update</button>
+        <button type="submit" id="submitButton" disabled>Update</button>
     </form>
     <script>
-        function toggleOtherStatus(select) {
-            const otherInput = document.getElementById('status_other');
+        function toggleOtherTaskName(select) {
+            const otherInput = document.getElementById('task_name_other');
             if (select.value === 'Other') {
                 otherInput.style.display = 'block';
-                otherInput.name = 'status';
-                document.querySelector('#status_select').name = '';
+                otherInput.name = 'task_name';
+                document.querySelector('#task_name_select').name = '';
             } else {
                 otherInput.style.display = 'none';
                 otherInput.name = '';
-                document.querySelector('#status_select').name = 'status';
+                document.querySelector('#task_name_select').name = 'task_name';
             }
+            checkFormCompletion();
         }
+
+        function validateDates() {
+            const startDate = new Date(document.getElementById('start_date').value);
+            const endDate = new Date(document.getElementById('end_date').value);
+            if (endDate < startDate) {
+                alert("End date cannot be before start date. Please select a valid date.");
+                return false;
+            }
+            return true;
+        }
+
+        function checkFormCompletion() {
+            const taskNameSelect = document.getElementById('task_name_select').value;
+            const taskNameOther = document.getElementById('task_name_other');
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+            const progress = document.getElementById('progress').value;
+            const status = document.getElementById('status').value;
+            const dependencies = document.getElementById('dependencies').selectedOptions;
+            const comment = document.getElementById('comment').value;
+            const submitButton = document.getElementById('submitButton');
+
+            const isTaskNameValid = taskNameSelect !== '' || (taskNameSelect === 'Other' && taskNameOther.style.display === 'block' && taskNameOther.value.trim() !== '');
+            const isDependenciesValid = Array.from(dependencies).some(opt => opt.value !== '') || Array.from(dependencies).some(opt => opt.value === 'None');
+
+            submitButton.disabled = !(isTaskNameValid && startDate && endDate && progress && status && isDependenciesValid && comment);
+        }
+
         window.onload = function() {
-            toggleOtherStatus(document.getElementById('status_select'));
+            toggleOtherTaskName(document.getElementById('task_name_select'));
+            ['change', 'input'].forEach(event => {
+                document.querySelectorAll('input, select').forEach(el => {
+                    el.addEventListener(event, checkFormCompletion);
+                });
+            });
         };
     </script>
 </body>

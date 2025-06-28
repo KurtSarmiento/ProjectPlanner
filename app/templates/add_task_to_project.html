@@ -9,61 +9,106 @@
 </head>
 <body>
 <h1>Add Task to {{ project.name }}</h1>
-    <form method="POST" action="">
+    <form method="POST" action="" onsubmit="return validateDates()">
         <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <div>
             <label for="task_name">Task Name:</label>
-            <input type="text" id="task_name" name="task_name" required>
+            <select id="task_name_select" name="task_name" onchange="toggleOtherTaskName(this)" required>
+                <option value="Planning">Planning</option>
+                <option value="Budget Request">Budget Request</option>
+                <option value="Prepare Logistics">Prepare Logistics</option>
+                <option value="Event Proper">Event Proper</option>
+                <option value="Liquidation Report">Liquidation Report</option>
+                <option value="Other">Other</option>
+            </select>
+            <input type="text" id="task_name_other" name="task_name_other" style="display: none;" placeholder="Enter custom task name">
         </div>
         <div>
             <label for="start_date">Start Date (YYYY-MM-DD):</label>
-            <input type="date" id="start_date" name="start_date">
+            <input type="date" id="start_date" name="start_date" required>
         </div>
         <div>
             <label for="end_date">End Date (YYYY-MM-DD):</label>
-            <input type="date" id="end_date" name="end_date">
+            <input type="date" id="end_date" name="end_date" required>
         </div>
         <div>
-            <label for="progress">Progress (0-100):</label>
-            <input type="number" id="progress" name="progress" min="0" max="100" value="0">
+            <label for="progress">Progress:</label>
+            <select id="progress" name="progress" required>
+                <option value="0">0%</option>
+                <option value="25">25%</option>
+                <option value="50">50%</option>
+                <option value="75">75%</option>
+                <option value="100">100%</option>
+            </select>
         </div>
         <div>
             <label for="status">Status:</label>
-            <select id="status_select" name="status" onchange="toggleOtherStatus(this)">
-                <option value="To Do" selected>To Do</option>
+            <select id="status" name="status" required>
+                <option value="To Do">To Do</option>
                 <option value="In Progress">In Progress</option>
                 <option value="Completed">Completed</option>
                 <option value="Blocked">Blocked</option>
-                <option value="Other">Other</option>
             </select>
-            <input type="text" id="status_other" name="status_other" style="display: none;" placeholder="Enter custom status">
         </div>
         <div>
-            <label for="dependencies">Dependency (select one):</label>
-            <select id="dependencies" name="dependencies">
+            <label for="dependencies">Dependencies (select multiple, hold Ctrl/Cmd to select more than one):</label>
+            <select id="dependencies" name="dependencies" multiple size="5" required>
                 <option value="None" selected>None</option>
                 {% for t in project.tasks %}
                     <option value="{{ t.name }}">{{ t.name }}</option>
                 {% endfor %}
             </select>
         </div>
-        <button type="submit">Add</button>
+        <button type="submit" id="submitButton" disabled>Add</button>
     </form>
     <script>
-        function toggleOtherStatus(select) {
-            const otherInput = document.getElementById('status_other');
+        function toggleOtherTaskName(select) {
+            const otherInput = document.getElementById('task_name_other');
             if (select.value === 'Other') {
                 otherInput.style.display = 'block';
-                otherInput.name = 'status';
-                document.querySelector('#status_select').name = '';
+                otherInput.name = 'task_name';
+                document.querySelector('#task_name_select').name = '';
             } else {
                 otherInput.style.display = 'none';
                 otherInput.name = '';
-                document.querySelector('#status_select').name = 'status';
+                document.querySelector('#task_name_select').name = 'task_name';
             }
+            checkFormCompletion();
         }
+
+        function validateDates() {
+            const startDate = new Date(document.getElementById('start_date').value);
+            const endDate = new Date(document.getElementById('end_date').value);
+            if (endDate < startDate) {
+                alert("End date cannot be before start date. Please select a valid date.");
+                return false;
+            }
+            return true;
+        }
+
+        function checkFormCompletion() {
+            const taskNameSelect = document.getElementById('task_name_select').value;
+            const taskNameOther = document.getElementById('task_name_other');
+            const startDate = document.getElementById('start_date').value;
+            const endDate = document.getElementById('end_date').value;
+            const progress = document.getElementById('progress').value;
+            const status = document.getElementById('status').value;
+            const dependencies = document.getElementById('dependencies').selectedOptions;
+            const submitButton = document.getElementById('submitButton');
+
+            const isTaskNameValid = taskNameSelect !== '' || (taskNameSelect === 'Other' && taskNameOther.style.display === 'block' && taskNameOther.value.trim() !== '');
+            const isDependenciesValid = Array.from(dependencies).some(opt => opt.value !== '') || Array.from(dependencies).some(opt => opt.value === 'None');
+
+            submitButton.disabled = !(isTaskNameValid && startDate && endDate && progress && status && isDependenciesValid);
+        }
+
         window.onload = function() {
-            toggleOtherStatus(document.getElementById('status_select'));
+            toggleOtherTaskName(document.getElementById('task_name_select'));
+            ['change', 'input'].forEach(event => {
+                document.querySelectorAll('input, select').forEach(el => {
+                    el.addEventListener(event, checkFormCompletion);
+                });
+            });
         };
     </script>
 </body>
