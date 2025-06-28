@@ -318,6 +318,50 @@ def update_comment(project_id, task_id):
             return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
     return jsonify({'success': False, 'message': 'No comment'}), 400
 
+@bp.route('/api/projects', methods=['GET'])
+@login_required
+def api_get_all_projects():
+    print("--- DEBUG: api_get_all_projects function was called! ---")
+    projects = Project.query.filter_by(user=current_user).all()
+    print(f"Projects fetched for user {current_user.id}:")
+    for project in projects:
+        print(f"  Project ID: {project.id}, Name: {project.name}")
+    projects_data = []
+    for project in projects:
+        project_tasks = Task.query.filter_by(project=project).order_by(Task.start_date.asc()).all()
+        gantt_tasks_data = []
+        for task in project_tasks:
+            start_date_formatted = task.start_date.strftime('%Y-%m-%d') if task.start_date else ''
+            end_date_formatted = task.end_date.strftime('%Y-%m-%d') if task.end_date else ''
+            custom_class = 'bar-blue'
+            if task.status == 'Completed':
+                custom_class = 'bar-green'
+            elif task.status == 'In Progress':
+                custom_class = 'bar-yellow'
+            elif task.status == 'Blocked':
+                custom_class = 'bar-red'
+            gantt_task_item = {
+                'id': str(task.id),
+                'name': task.name,
+                'start': start_date_formatted,
+                'end': end_date_formatted,
+                'progress': task.progress,
+                'custom_class': custom_class,
+                'comment': task.comment if task.comment else ''
+            }
+            if task.dependencies:
+                gantt_task_item['dependencies'] = task.dependencies
+            gantt_tasks_data.append(gantt_task_item)
+        projects_data.append({
+            'id': project.id,
+            'name': project.name,
+            'gantt_tasks': gantt_tasks_data
+        })
+    return jsonify({
+        'success': True,
+        'projects': projects_data
+    })
+
 @bp.route('/api/projects/<int:project_id>/tasks', methods=['GET'])
 @login_required
 def api_get_project_tasks(project_id):

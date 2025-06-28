@@ -3,6 +3,9 @@ import os
 from dotenv import load_dotenv
 from .extensions import db, login_manager
 from flask_migrate import Migrate
+from flask_wtf import CSRFProtect
+
+csrf = CSRFProtect()
 
 def create_app():
     load_dotenv()
@@ -15,6 +18,8 @@ def create_app():
         raise ValueError("No FLASK_SECRET_KEY set. Please set the FLASK_SECRET_KEY environment variable or add it to .env file.")
     print("Database URI:", app.config['SQLALCHEMY_DATABASE_URI'])  # Debug
     print("Current directory:", basedir)  # Debug
+
+    csrf.init_app(app)
 
     db.init_app(app)
     login_manager.init_app(app)

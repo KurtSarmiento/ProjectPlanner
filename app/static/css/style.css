@@ -191,3 +191,16 @@
 .delete-task-btn:hover {
     background-color: #c9302c;
 }
+
+.gantt-divider {
+    margin-top: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+}
+.gantt-chart {
+    height: 200px;
+    margin-bottom: 20px;
+}
+.modal {
+    display: none;
+}
