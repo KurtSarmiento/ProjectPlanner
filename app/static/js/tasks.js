@@ -146,7 +146,11 @@ $(document).ready(function() {
                         taskList.append('<li>No tasks yet for this project. Add one above!</li>');
                     }
                     // Update Gantt chart
-                    gantt.refresh(response.gantt_tasks);
+                    if (typeof refreshGantt === 'function') {
+                        refreshGantt(response.gantt_tasks);
+                    } else {
+                        console.warn("refreshGantt function not available");
+                    }
                 } else {
                     showModal('errorModal', [response.message], true);
                 }

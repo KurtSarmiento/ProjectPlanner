@@ -141,6 +141,7 @@ def view_project(project_id):
                 'end': end_date_formatted,
                 'progress': task.progress,
                 'custom_class': custom_class,
+                'comment': task.comment if task.comment else 'No comment',
             }
             print(f"Task {task.id} raw dependency (name): {task.dependencies}")  # Debug raw value
             if task.dependencies and task.dependencies != 'None':
@@ -326,7 +327,7 @@ def api_get_project_tasks(project_id):
     project_tasks = Task.query.filter_by(project=project).order_by(Task.start_date.asc()).all()
     print(f"Tasks fetched for project {project_id}, ordered by start_date:")
     for task in project_tasks:
-        print(f"  Task ID: {task.id}, Name: {task.name}, Start Date: {task.start_date}")
+        print(f"  Task ID: {task.id}, Name: {task.name}, Start Date: {task.start_date}, Comment: {task.comment}")
     tasks_data = []
     gantt_tasks_data = []
     for task in project_tasks:
@@ -336,7 +337,8 @@ def api_get_project_tasks(project_id):
             'start_date': task.start_date.strftime('%Y-%m-%d') if task.start_date else '',
             'end_date': task.end_date.strftime('%Y-%m-%d') if task.end_date else '',
             'progress': task.progress,
-            'status': task.status
+            'status': task.status,
+            'comment': task.comment if task.comment else ''  # Add comment here
         })
         start_date_formatted = task.start_date.strftime('%Y-%m-%d') if task.start_date else ''
         end_date_formatted = task.end_date.strftime('%Y-%m-%d') if task.end_date else ''
@@ -353,7 +355,8 @@ def api_get_project_tasks(project_id):
             'start': start_date_formatted,
             'end': end_date_formatted,
             'progress': task.progress,
-            'custom_class': custom_class
+            'custom_class': custom_class,
+            'comment': task.comment if task.comment else ''  # Add comment here
         }
         if task.dependencies:
             gantt_task_item['dependencies'] = task.dependencies

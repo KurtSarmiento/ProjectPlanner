@@ -100,12 +100,9 @@
     border-radius: 5px;
 }
 
-/* Disable interaction with Gantt chart bars and handles */
-.gantt .bar-wrapper,
-.gantt .handle {
-    pointer-events: none !important; /* Prevents all mouse events */
-    cursor: default !important; /* Changes cursor to default, overriding resize/pointer */
-}
+/* --- Gantt Chart Styles --- */
+/* Disable dragging but allow clicks for popup */
+
 
 /* General Modal Styles (if not already present or needs adjustment) */
 .modal {

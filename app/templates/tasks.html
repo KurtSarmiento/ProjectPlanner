@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}"> <!-- Added CSRF token -->
     <title>{{ project.name }} Tasks</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='frappe-gantt.css') }}">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/frappe-gantt.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <style>
         .modal {
             display: none;
@@ -76,7 +76,8 @@
                 (Starts: {{ task.start_date.strftime('%Y-%m-%d') if task.start_date else 'N/A' }},
                 Ends: {{ task.end_date.strftime('%Y-%m-%d') if task.end_date else 'N/A' }},
                 Progress: {{ task.progress }}%,
-                Status: {{ task.status }})
+                Status: {{ task.status }},
+                Comment: {{ task.comment if task.comment else 'No comment' }})
                 <a href="{{ url_for('main.edit_task', task_id=task.id) }}">Edit</a>
                 <form action="{{ url_for('main.delete_task', task_id=task.id) }}" method="POST" style="display:inline;" class="delete-task-form">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
@@ -108,85 +109,21 @@
         </div>
     </div>
 
-    <form action="{{ url_for('main.delete_project', project_id=project.id) }}" method="POST" style="margin-top: 10px;" onsubmit="return confirm('Are you sure you want to delete this project and all its tasks?');">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-        <button type="submit">Delete Project</button>
-    </form>
-
-    <!-- Load JavaScript files -->
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-    <script src="{{ url_for('static', filename='tasks.js') }}"></script> <!-- New script for task interactions -->
-    <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.5.0/dist/frappe-gantt.min.js"></script>
-    <script>
-        const tasks = {{ gantt_tasks_json | safe }};
-        console.log("Gantt tasks data:", tasks);  // Debug in browser console
-        var gantt = new Gantt("#gantt-chart", tasks, {
-            on_click: function(task) {
-                console.log("Clicked task:", task);
-                showCommentModal(task.id, task.name);
-            },
-            view_mode: 'Week',
-            date_format: 'YYYY-MM-DD',
-            custom_popup_html: function(task) {
-                return `${task.name} (Progress: ${task.progress}%)`;
-            }
-        });
-
-        $('.view-mode').click(function() {
-            var mode = $(this).data('mode');
-            gantt.change_view_mode(mode);
-        });
-
-        // Stabilize dependency rendering
-        setTimeout(() => gantt.refresh(tasks), 100);
-
-        // Comment modal functions
-        function showCommentModal(taskId, taskName) {
-            const modal = document.getElementById('commentModal');
-            const taskNameSpan = document.getElementById('commentTaskName');
-            const textarea = document.getElementById('taskCommentTextarea');
-            const flashes = document.getElementById('modal-flashes');
-
-            taskNameSpan.textContent = taskName;
-            textarea.value = tasks.find(t => t.id === taskId.toString()).comment || '';
-            flashes.innerHTML = '';
-            modal.style.display = 'block';
-        }
-
-        document.querySelector('.close-button').addEventListener('click', closeCommentModal);
-        document.getElementById('saveCommentButton').addEventListener('click', function() {
-            const taskId = tasks.find(t => t.name === document.getElementById('commentTaskName').textContent).id;
-            const comment = document.getElementById('taskCommentTextarea').value;
-            $.ajax({
-                url: '{{ url_for("main.update_comment", task_id=0) }}'.replace('0', taskId),
-                method: 'POST',
-                data: {
-                    csrf_token: $('meta[name="csrf-token"]').attr('content'),
-                    comment: comment
-                },
-                success: function(response) {
-                    if (response.success) {
-                        $('#modal-flashes').append('<li class="success">Comment saved!</li>');
-                        setTimeout(closeCommentModal, 1000);
-                    } else {
-                        $('#modal-flashes').append('<li class="error">Error saving comment.</li>');
-                    }
-                },
-                error: function() {
-                    $('#modal-flashes').append('<li class="error">Network error.</li>');
-                }
-            });
-        });
-
-        function closeCommentModal() {
-            document.getElementById('commentModal').style.display = 'none';
-        }
-
-        window.addEventListener('resize', () => gantt.refresh(tasks));
+    <!-- Hidden element for Gantt data -->
+    <script type="application/json" id="gantt-tasks-data">
+        {{ gantt_tasks_json | safe }}
     </script>
+
+    <!-- Load JavaScript files in correct order -->
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/frappe-gantt@0.5.0/dist/frappe-gantt.min.js"></script>
+    <script src="{{ url_for('static', filename='js/tasks.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/gantt-init.js') }}"></script>
 
     <footer>
         <p>© 2025 Project Planner</p>
     </footer>
+
+    <script>console.log("Gantt tasks JSON:", {{ gantt_tasks_json | tojson | safe }});</script>
 </body>
 </html>
