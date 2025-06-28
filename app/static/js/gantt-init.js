@@ -55,7 +55,8 @@ document.addEventListener('DOMContentLoaded', function() {
         this.update_bar_position = function() { return false; };
     };
 
-    var gantt = new Gantt("#gantt-chart", tasks, {
+    window.tasks = tasks;
+    var gantt = new Gantt("#gantt-chart", window.tasks, {
         on_click: function(task) {
             console.log("Clicked task:", task);
             if (typeof showCommentModal === 'function') {
@@ -67,7 +68,7 @@ document.addEventListener('DOMContentLoaded', function() {
         view_mode: 'Week',
         date_format: 'YYYY-MM-DD',
         custom_popup_html: function(task) {
-            const comment = tasks.find(t => t.id === task.id).comment || 'No comment';
+            const comment = window.tasks.find(t => t.id === task.id).comment || 'No comment';
             return `${task.name} (Progress: ${task.progress}%)<br>Comment: ${comment}`;
         },
         popup_trigger: 'click',
@@ -76,6 +77,7 @@ document.addEventListener('DOMContentLoaded', function() {
         on_drag_start: function() { return false; },
         on_resize_start: function() { return false; }
     });
+    window.gantt = gantt; // Store gantt instance globally
 
     $('.view-mode').click(function() {
         var mode = $(this).data('mode');

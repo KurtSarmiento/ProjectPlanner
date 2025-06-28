@@ -118,8 +118,8 @@ $(document).ready(function() {
     // Comment modal handling
     window.showCommentModal = function(taskId, taskName) {
         if (!taskId || isNaN(parseInt(taskId))) {
-            console.warn("Invalid taskId:", taskId, "skipping modal for", taskName);
-            return; // Prevent invalid calls
+            console.warn("Invalid taskId:", taskId, "skipping modal for", taskName, "called from:", new Error().stack);
+            return; // Prevent invalid calls and log call origin
         }
         console.log("Opening modal for taskId:", taskId, "name:", taskName);
         $('#commentTaskName').text(taskName).data('task-id', taskId); // Set data-task-id
@@ -197,14 +197,6 @@ $(document).ready(function() {
             }
         });
     }
-
-    $(document).ready(function() {
-        $('#task-list').on('click', 'li', function() {
-            const taskId = $(this).attr('id').replace('task-', '');
-            const taskName = $(this).contents().filter(function() { return this.nodeType === 3; }).text().trim().split(' (')[0];
-            if (taskId) showCommentModal(taskId, taskName); // Correctly uses taskId
-        });
-    });
 
     // Save comment
     $('#saveCommentButton').click(function() {
