@@ -301,23 +301,22 @@ def delete_task(task_id):
         flash('An unexpected error occurred while deleting the task.', 'error')
         return redirect(url_for('main.view_project', project_id=task.project_id))
 
-@bp.route('/tasks/<int:task_id>/update_comment', methods=['POST'])
+@bp.route('/projects/<int:project_id>/update_comment/<int:task_id>', methods=['POST'])
 @login_required
-def update_comment(task_id):
+def update_comment(project_id, task_id):
     task = Task.query.get_or_404(task_id)
-    if task.project.user_id != current_user.id:
-        return jsonify({'success': False, 'message': 'You do not have permission to update this task.'}), 403
-    comment = request.form.get('comment')
+    if task.project.user_id != current_user.id or task.project_id != project_id:
+        return jsonify({'success': False, 'message': 'Unauthorized'}), 403
+    comment = request.get_json().get('comment')  # Handle JSON
     if comment:
-        task.comment = comment
+        task.comment = comment.strip()
         try:
             db.session.commit()
-            return jsonify({'success': True, 'message': 'Comment updated successfully!'})
+            return jsonify({'success': True, 'message': 'Comment updated!'})
         except Exception as e:
             db.session.rollback()
-            print("Update comment error:", str(e))
-            return jsonify({'success': False, 'message': 'Error updating comment.'}), 500
-    return jsonify({'success': False, 'message': 'No comment provided.'}), 400
+            return jsonify({'success': False, 'message': f'Error: {str(e)}'}), 500
+    return jsonify({'success': False, 'message': 'No comment'}), 400
 
 @bp.route('/api/projects/<int:project_id>/tasks', methods=['GET'])
 @login_required

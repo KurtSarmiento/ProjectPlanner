@@ -42,7 +42,6 @@ $(document).ready(function() {
                     if (response.success) {
                         $('#task-' + taskId).remove();
                         showModal('successModal', response.message);
-                        // Refresh Gantt chart
                         fetchTasks(projectId); // Assumes projectId is available globally
                     } else {
                         showModal('errorModal', [response.message], true);
@@ -112,6 +111,40 @@ $(document).ready(function() {
         });
     });
 
+    // Initialize projectId from URL or hidden input (adjust as needed)
+    var projectId = window.location.pathname.split('/')[2]; // Assumes URL is /projects/<project_id>
+    fetchTasks(projectId); // Initial fetch to ensure task list and Gantt chart are in sync
+
+    // Comment modal handling
+    window.showCommentModal = function(taskId, taskName) {
+        if (!taskId || isNaN(parseInt(taskId))) {
+            console.warn("Invalid taskId:", taskId, "skipping modal for", taskName);
+            return; // Prevent invalid calls
+        }
+        console.log("Opening modal for taskId:", taskId, "name:", taskName);
+        $('#commentTaskName').text(taskName).data('task-id', taskId); // Set data-task-id
+        $('#taskCommentTextarea').val(''); // Clear textarea
+        $.ajax({
+            url: '/api/tasks/' + taskId + '/comment',
+            type: 'GET',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-Token': $('meta[name="csrf-token"]').attr('content')
+            },
+            success: function(response) {
+                if (response.success) {
+                    $('#taskCommentTextarea').val(response.comment || '');
+                    $('#commentModal').show();
+                } else {
+                    showModal('errorModal', [response.message], true);
+                }
+            },
+            error: function(xhr) {
+                showModal('errorModal', [xhr.responseJSON ? xhr.responseJSON.message : 'Unknown error'], true);
+            }
+        });
+    };
+
     // Function to fetch tasks and refresh Gantt chart
     function fetchTasks(projectId) {
         $.ajax({
@@ -123,7 +156,6 @@ $(document).ready(function() {
             },
             success: function(response) {
                 if (response.success) {
-                    // Update task list
                     const taskList = $('#task-list');
                     taskList.empty();
                     if (response.tasks.length > 0) {
@@ -145,11 +177,15 @@ $(document).ready(function() {
                     } else {
                         taskList.append('<li>No tasks yet for this project. Add one above!</li>');
                     }
-                    // Update Gantt chart
                     if (typeof refreshGantt === 'function') {
                         refreshGantt(response.gantt_tasks);
                     } else {
-                        console.warn("refreshGantt function not available");
+                        console.warn("refreshGantt not available, retrying...");
+                        setTimeout(() => {
+                            if (typeof refreshGantt === 'function') {
+                                refreshGantt(response.gantt_tasks);
+                            }
+                        }, 500);
                     }
                 } else {
                     showModal('errorModal', [response.message], true);
@@ -162,39 +198,26 @@ $(document).ready(function() {
         });
     }
 
-    // Initialize projectId from URL or hidden input (adjust as needed)
-    var projectId = window.location.pathname.split('/')[2]; // Assumes URL is /projects/<project_id>
-    fetchTasks(projectId); // Initial fetch to ensure task list and Gantt chart are in sync
-
-    // Comment modal handling (if needed)
-    window.showCommentModal = function(taskId, taskName) {
-        $('#commentTaskName').text(taskName);
-        $.ajax({
-            url: '/api/tasks/' + taskId + '/comment',
-            type: 'GET',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'X-CSRF-Token': $('meta[name="csrf-token"]').attr('content')
-            },
-            success: function(response) {
-                if (response.success) {
-                    $('#taskCommentTextarea').val(response.comment);
-                    $('#commentModal').show();
-                } else {
-                    showModal('errorModal', [response.message], true);
-                }
-            },
-            error: function(xhr) {
-                const message = xhr.responseJSON ? xhr.responseJSON.message : 'Unknown error';
-                showModal('errorModal', [message], true);
-            }
+    $(document).ready(function() {
+        $('#task-list').on('click', 'li', function() {
+            const taskId = $(this).attr('id').replace('task-', '');
+            const taskName = $(this).contents().filter(function() { return this.nodeType === 3; }).text().trim().split(' (')[0];
+            if (taskId) showCommentModal(taskId, taskName); // Correctly uses taskId
         });
-    };
+    });
 
     // Save comment
     $('#saveCommentButton').click(function() {
-        const taskId = $('#commentTaskName').text(); // Adjust if taskId is stored differently
-        const comment = $('#taskCommentTextarea').val();
+        const taskId = $('#commentTaskName').data('task-id'); // Rely on data-task-id set by showCommentModal
+        const comment = $('#taskCommentTextarea').val().trim();
+        if (!comment) {
+            showModal('errorModal', ['Comment cannot be empty'], true);
+            return;
+        }
+        if (!taskId || isNaN(taskId)) {
+            showModal('errorModal', ['Invalid task ID'], true);
+            return;
+        }
         $.ajax({
             url: '/api/tasks/' + taskId + '/comment',
             type: 'POST',
@@ -208,6 +231,7 @@ $(document).ready(function() {
                 if (response.success) {
                     showModal('successModal', response.message);
                     $('#commentModal').hide();
+                    fetchTasks(projectId); // Refresh task list
                 } else {
                     showModal('errorModal', [response.message], true);
                 }

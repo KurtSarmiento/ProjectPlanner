@@ -97,8 +97,8 @@
         <button class="view-mode" data-mode="Month">Month</button>
     </div>
 
-    <div id="gantt-chart" style="width: 100%; height: 400px;"></div>
-
+    <div id="gantt-chart" style="width: 100%; height: 400px;" data-update-comment-url="{{ url_for('main.update_comment', project_id=project.id, task_id=0) }}"></div>    
+    
     <div id="commentModal" class="modal">
         <div class="modal-content">
             <span class="close-button">×</span>
@@ -123,7 +123,5 @@
     <footer>
         <p>© 2025 Project Planner</p>
     </footer>
-
-    <script>console.log("Gantt tasks JSON:", {{ gantt_tasks_json | tojson | safe }});</script>
 </body>
 </html>

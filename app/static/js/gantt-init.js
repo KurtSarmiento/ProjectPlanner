@@ -59,7 +59,7 @@ document.addEventListener('DOMContentLoaded', function() {
         on_click: function(task) {
             console.log("Clicked task:", task);
             if (typeof showCommentModal === 'function') {
-                showCommentModal(task.id, task.name);
+                showCommentModal(parseInt(task.id), task.name); // Pass numeric task.id
             } else {
                 console.warn("showCommentModal not defined");
             }
@@ -96,25 +96,36 @@ document.addEventListener('DOMContentLoaded', function() {
 
     document.querySelector('.close-button').addEventListener('click', closeCommentModal);
     document.getElementById('saveCommentButton')?.addEventListener('click', function() {
-        const taskId = tasks.find(t => t.name === document.getElementById('commentTaskName').textContent).id;
-        const comment = document.getElementById('taskCommentTextarea').value;
+        const taskId = parseInt(tasks.find(t => t.name === document.getElementById('commentTaskName').textContent).id);
+        const comment = document.getElementById('taskCommentTextarea').value.trim();
+        if (!comment) {
+            $('#modal-flashes').append('<li class="error">Comment cannot be empty</li>');
+            return;
+        }
+        const baseUrl = document.querySelector('#gantt-chart').dataset.updateCommentUrl.replace('0', taskId);
+        console.log("Sending AJAX to:", baseUrl, "with data:", { comment: comment });
         $.ajax({
-            url: '{{ url_for("main.update_comment", task_id=0) }}'.replace('0', taskId),
+            url: baseUrl,
             method: 'POST',
-            data: { csrf_token: $('meta[name="csrf-token"]').attr('content'), comment: comment },
+            contentType: 'application/json',
+            data: JSON.stringify({ comment: comment }),
+            headers: {
+                'X-CSRF-Token': $('meta[name="csrf-token"]').attr('content') // Add CSRF token
+            },
             success: function(response) {
                 if (response.success) {
-                    $('#modal-flashes').append('<li class="success">Comment saved!</li>');
+                    $('#modal-flashes').append('<li class="success">Comment saved!</li>'); // Fixed syntax
                     setTimeout(closeCommentModal, 1000);
                     if (typeof fetchTasks === 'function' && window.projectId) {
                         fetchTasks(window.projectId);
                     }
                 } else {
-                    $('#modal-flashes').append('<li class="error">Error saving comment.</li>');
+                    $('#modal-flashes').append('<li class="error">Error: ' + response.message + '</li>');
                 }
             },
-            error: function() {
-                $('#modal-flashes').append('<li class="error">Network error.</li>');
+            error: function(xhr) {
+                $('#modal-flashes').append('<li class="error">Network error: ' + (xhr.responseJSON ? xhr.responseJSON.message : xhr.statusText) + '</li>');
+                console.log("AJAX error details:", xhr.responseText);
             }
         });
     });
