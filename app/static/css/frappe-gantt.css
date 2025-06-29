@@ -118,3 +118,42 @@
       border: 5px solid transparent;
       border-top-color: rgba(0, 0, 0, 0.8); }
     
+/* --- Task Status Colors for Gantt Chart --- */
+.gantt .bar-green .bar-progress {
+    fill: #5cb85c; /* Bootstrap 'success' green */
+}
+.gantt .bar-green .bar-wrapper.active .bar-progress {
+    fill: #449d44; /* Darker green on hover */
+}
+
+.gantt .bar-yellow .bar-progress {
+    fill: #f0ad4e; /* Bootstrap 'warning' yellow/orange */
+}
+.gantt .bar-yellow .bar-wrapper.active .bar-progress {
+    fill: #ec971f; /* Darker yellow/orange on hover */
+}
+
+.gantt .bar-red .bar-progress {
+    fill: #d9534f; /* Bootstrap 'danger' red */
+}
+.gantt .bar-red .bar-wrapper.active .bar-progress {
+    fill: #c9302c; /* Darker red on hover */
+}
+
+/* Keep the default blue or define a specific .bar-blue if not already */
+.gantt .bar-blue .bar-progress {
+    fill: #337ab7; /* Standard blue */
+}
+.gantt .bar-blue .bar-wrapper.active .bar-progress {
+    fill: #286090; /* Darker blue on hover */
+}
+
+.gantt-divider {
+    margin-top: 20px;
+    padding: 10px;
+    border: 1px solid #ccc;
+}
+.gantt-chart {
+    height: 200px;
+    margin-bottom: 20px;
+}

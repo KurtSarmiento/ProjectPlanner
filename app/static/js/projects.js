@@ -108,15 +108,17 @@ $(document).ready(function() {
                                         end: end,
                                         progress: task.progress || 0,
                                         dependencies: dependencies,
-                                        custom_class: task.custom_class || 'bar-blue'
+                                        custom_class: task.custom_class || 'bar-blue',
+                                        comment: task.comment || '' // Ensure comment is included
                                     };
                                 }).filter(task => task.start && task.end && !isNaN(Date.parse(task.start)) && !isNaN(Date.parse(task.end))));
                             }
                         });
+                        console.log("All Tasks:", allTasks); // Debug allTasks
                         if (allTasks.length > 0) {
                             const ganttElement = document.getElementById('gantt-chart-' + (response.projects[0].id || 'unknown'));
                             if (ganttElement && typeof Gantt !== 'undefined') {
-                                // Override bind_bar_events
+                                // Override bind_bar_events (minimal, for locking only)
                                 const originalBindBarEvents = Gantt.prototype.bind_bar_events;
                                 Gantt.prototype.bind_bar_events = function() {
                                     this.bar_being_dragged = null;
@@ -140,54 +142,67 @@ $(document).ready(function() {
                                     this.update_bar_position = function() { return false; };
                                 };
                                 window.gantt = new Gantt(ganttElement, allTasks, {
-                                    on_click: function(task) {
-                                        console.log("Clicked task:", task);
-                                    },
                                     view_mode: 'Week',
                                     date_format: 'YYYY-MM-DD',
+                                    popup_trigger: 'click', // Re-enable click trigger
                                     custom_popup_html: function(task) {
-                                        const comment = allTasks.find(t => t.id === task.id)?.comment || 'No comment';
-                                        return `${task.name} (Progress: ${task.progress}%)<br>Comment: ${comment}`;
+                                        if (!task || typeof task.id === 'undefined') {
+                                            console.warn("Invalid task object, falling back to DOM:", task);
+                                            const bar = document.querySelector('.bar-wrapper.active') || document.querySelector('.bar-wrapper[data-id]');
+                                            const taskId = bar ? bar.getAttribute('data-id') : null;
+                                            const foundTask = taskId ? allTasks.find(t => t.id === taskId) : null;
+                                            if (foundTask) {
+                                                return `${foundTask.name} (Progress: ${foundTask.progress}%)<br>Comment: ${foundTask.comment || 'No comment'}`;
+                                            }
+                                            return "Unknown Task (Error)";
+                                        }
+                                        const taskId = task.id;
+                                        const foundTask = allTasks.find(t => t.id === taskId);
+                                        if (foundTask) {
+                                            return `${foundTask.name} (Progress: ${foundTask.progress}%)<br>Comment: ${foundTask.comment || 'No comment'}`;
+                                        } else {
+                                            console.warn("Task not found in allTasks for ID:", taskId);
+                                            return `${task.name || 'Unknown'} (Progress: ${task.progress || 0}%)<br>Comment: ${task.comment || 'No comment'}`;
+                                        }
                                     },
-                                    popup_trigger: 'click',
                                     on_progress_change: null,
-                                    on_date_change: null,
-                                    on_drag_start: function() { return false; },
-                                    on_resize_start: function() { return false; }
-                                });
-                                Gantt.prototype.bind_bar_events = originalBindBarEvents; // Restore original
-                                // View mode handlers with case-sensitive modes
-                                $('.view-mode').off('click').on('click', function() {
-                                    const mode = $(this).data('mode'); // Use exact case as defined
-                                    if (window.gantt && typeof window.gantt.change_view_mode === 'function') {
-                                        window.gantt.change_view_mode(mode);
-                                        window.gantt.refresh(allTasks); // Force re-render
-                                        console.log("Changed view mode to:", mode);
-                                    } else {
-                                        console.warn("Gantt change_view_mode not available");
-                                    }
-                                });
-                                setTimeout(() => window.gantt.refresh(allTasks), 100);
-                            } else {
-                                console.warn("Gantt element or library not available");
-                                ganttContainer.append('<p>Unable to initialize Gantt chart.</p>');
-                            }
-                        } else {
-                            ganttContainer.append('<p>No valid Gantt data available.</p>');
-                        }
-                    } else {
-                        ganttContainer.append('<p>No projects with Gantt data available.</p>');
-                    }
-                } else {
-                    showModal('errorModal', [response.message || 'Failed to load projects'], true);
-                }
-            },
-            error: function(xhr) {
-                const message = xhr.responseJSON ? xhr.responseJSON.message : 'Unknown error';
-                console.error("API Error:", xhr); // Debug error
-                showModal('errorModal', [message], true);
+            on_date_change: null,
+            on_drag_start: function() { return false; },
+            on_resize_start: function() { return false; }
+        });
+        Gantt.prototype.bind_bar_events = originalBindBarEvents; // Restore original
+        // View mode handlers
+        $('.view-mode').off('click').on('click', function() {
+            const mode = $(this).data('mode');
+            if (window.gantt && typeof window.gantt.change_view_mode === 'function') {
+                window.gantt.change_view_mode(mode);
+                window.gantt.refresh(allTasks);
+                console.log("Changed view mode to:", mode);
+            } else {
+                console.warn("Gantt change_view_mode not available");
             }
         });
+        setTimeout(() => window.gantt.refresh(allTasks), 100);
+    } else {
+        console.warn("Gantt element or library not available");
+        ganttContainer.append('<p>Unable to initialize Gantt chart.</p>');
+    }
+    } else {
+        ganttContainer.append('<p>No valid Gantt data available.</p>');
+    }
+    } else {
+        ganttContainer.append('<p>No projects with Gantt data available.</p>');
+    }
+    } else {
+        showModal('errorModal', [response.message || 'Failed to load projects'], true);
+    }
+    },
+    error: function(xhr) {
+        const message = xhr.responseJSON ? xhr.responseJSON.message : 'Unknown error';
+        console.error("API Error:", xhr); // Debug error
+        showModal('errorModal', [message], true);
+    }
+    });
     }
 
     // Initialize
